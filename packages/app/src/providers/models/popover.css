@@ -1,0 +1,96 @@
+﻿/* Shared surface: soft graphite glass for every popup floating over the composer. */
+[data-component="menu-v2-content"][data-slot="model-selector-menu"],
+[data-component="menu-v2-content"][data-menu-glass],
+[data-component="composer-suggestions"] {
+  position: relative;
+  background: var(--menu-surface);
+  border-radius: 20px;
+  border: 1px solid var(--menu-border);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 0.34);
+  backdrop-filter: blur(14px);
+}
+
+/* A neutral grey hairline on the top edge; no colour cast. */
+[data-component="menu-v2-content"][data-slot="model-selector-menu"]::before,
+[data-component="menu-v2-content"][data-menu-glass]::before,
+[data-component="composer-suggestions"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 12px auto;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--menu-edge), transparent);
+}
+
+[data-slot="model-selector-menu"] [data-slot="model-selector-row"],
+[data-menu-glass] [data-slot="model-selector-row"] {
+  border-radius: 10px;
+}
+
+/* Rows inside shared-glass menus match the model list rows. */
+[data-menu-glass] [data-component="menu-v2-item"] {
+  height: 32px;
+  border-radius: 10px;
+}
+
+[data-slot="model-selector-menu"] [data-slot="model-selector-row"]:hover,
+[data-slot="model-selector-menu"] [data-slot="model-selector-row"][data-active],
+[data-menu-glass] [data-slot="model-selector-row"]:hover,
+[data-menu-glass] [data-slot="model-selector-row"][data-active] {
+  background: var(--menu-hover);
+}
+
+[data-color-scheme="dark"] {
+  --menu-surface: rgb(40 41 45 / 0.98);
+  --menu-hover: rgb(255 255 255 / 0.07);
+  --menu-border: #33353a;
+  --menu-edge: rgb(255 255 255 / 0.07);
+}
+
+[data-color-scheme="light"] {
+  --menu-surface: rgb(250 250 251 / 0.99);
+  --menu-hover: rgb(0 0 0 / 0.05);
+  --menu-border: rgb(0 0 0 / 0.09);
+  --menu-edge: rgb(0 0 0 / 0.06);
+}
+
+/* Quick actions in the empty review panel: one card per + menu item, darker than the floating menus. */
+[data-slot="session-panel-empty-action"] {
+  background: color-mix(in srgb, var(--menu-surface) 62%, var(--v2-background-bg-deep));
+  border-color: color-mix(in srgb, var(--menu-border) 66%, transparent);
+}
+
+[data-slot="session-panel-empty-action"]:hover {
+  background: color-mix(in srgb, var(--menu-surface) 80%, var(--v2-background-bg-deep));
+}
+
+/* Every override dialog: same graphite surface as the composer menus, with a slightly darker border. */
+[data-component="dialog-v2"]:has(.settings-manage-models-dialog),
+[data-component="dialog-v2"]:has(.elhadry-glass-dialog),
+[data-component="dialog-v2"]:has(.elhadry-surface-dialog) {
+  --v2-background-bg-base: #1e1f22;
+  --v2-background-bg-deep: #16171a;
+  --v2-background-bg-layer-01: #232428;
+  --v2-background-bg-layer-02: #282a2e;
+  --v2-background-bg-layer-03: #2f3135;
+  --v2-background-bg-layer-04: #383a3f;
+  --v2-text-text-base: #f2f3f5;
+  --v2-text-text-muted: #a3a5aa;
+  --v2-text-text-faint: #8b8d93;
+  --v2-text-text-contrast: #ffffff;
+  --v2-icon-icon-base: #cfd1d6;
+  --v2-icon-icon-muted: #9a9ca2;
+  --v2-border-border-base: #33353a;
+  --v2-border-border-muted: #2b2d31;
+}
+
+[data-component="dialog-v2"]:has(.settings-manage-models-dialog) [data-slot="dialog-container"],
+[data-component="dialog-v2"]:has(.elhadry-glass-dialog) [data-slot="dialog-container"],
+[data-component="dialog-v2"]:has(.elhadry-surface-dialog) [data-slot="dialog-container"] {
+  position: relative;
+  background: var(--menu-surface);
+  border: 1px solid var(--menu-border);
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.42);
+  backdrop-filter: blur(14px);
+}

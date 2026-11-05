@@ -1,0 +1,160 @@
+---
+title: "Plugins"
+---
+
+Add published packages, versioned packages, scoped packages, or local plugin directories to `elhadry.json(c)`.
+
+## Configure
+
+```jsonc title="elhadry.jsonc"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "elhadry-acme-plugin",
+    "elhadry-acme-plugin@1.2.0",
+    "@acme/elhadry-plugin",
+    "./plugins/local",
+    "../shared/plugin",
+    "/absolute/path/plugin",
+    "file:///home/me/plugins/local",
+    {
+      "package": "@acme/elhadry-plugin",
+      "options": {
+        "agent": "reviewer",
+        "strict": true,
+      },
+    },
+  ],
+}
+```
+
+Relative paths resolve from the config file containing the entry.
+
+Configured local paths must be directories. A path to a single file is skipped. See [Load](/build/plugins#load) for
+how Elhadry Agent finds each part in a directory.
+
+Plugin arrays from applicable config files are applied from lowest to highest precedence instead of replacing one
+another.
+
+```text
+~/.config/elhadry/elhadry.jsonc
+./elhadry.jsonc
+./.elhadry/elhadry.jsonc
+```
+
+## Discover
+
+Elhadry Agent also loads direct `.ts` and `.js` files and immediate plugin package directories from every discovered
+`.elhadry/plugins/` directory.
+
+```text
+.elhadry/
+└── plugins/
+    ├── concise.ts
+    ├── reviewer.js
+    └── acme-package/
+```
+
+Global plugins use the same discovery layout under the Elhadry Agent config directory.
+
+```text
+~/.config/elhadry/plugins/
+```
+
+A `plugins/` directory beside a project-root `elhadry.json(c)` is not discovered automatically; configure its plugin
+directories explicitly or move it under `.elhadry/`.
+
+```jsonc title="elhadry.jsonc"
+{
+  "plugins": ["./plugins/local"]
+}
+```
+
+## Control
+
+Plugin entries are processed in order. Prefix an ID or wildcard with `-` to disable it, use `*` for every plugin, and
+use `.*` to match an ID prefix. A later ID re-enables a plugin.
+
+```jsonc title="elhadry.jsonc"
+{
+  "plugins": ["*", "-opencode.provider.*", "opencode.provider.openai", "-acme.reviewer"]
+}
+```
+
+Two built-in plugins ignore removals so that a repository cannot switch off
+[policy](/policies) enforcement: `opencode.config.policy` and
+`opencode.provider.elhadry`, the Console connection that delivers organization
+policy.
+
+## Manage
+
+Install, list, check, update, or remove global package plugins with the CLI.
+
+```sh
+elhadry plugin add elhadry-acme-plugin@1.2.0
+elhadry plugin list
+elhadry plugin list --builtin
+elhadry plugin check
+elhadry plugin update
+elhadry plugin update elhadry-acme-plugin
+elhadry plugin remove elhadry-acme-plugin@1.2.0
+```
+
+`plugin check` checks server, GUI-only, and TUI-only package plugins for updates. `plugin update` updates every outdated package;
+pass a configured package target to check or update only that package. Local plugins and exact package revisions are
+skipped.
+
+Package installation accepts npm names with versions, tags, or ranges, plus npm-compatible Git package specifications.
+Git repositories can use hosted shortcuts, HTTPS, or SSH, including private repositories available through your existing
+Git credentials.
+
+```sh
+elhadry plugin add @acme/elhadry-plugin@latest
+elhadry plugin add github:acme/elhadry-plugin
+elhadry plugin add git+ssh://git@github.com/acme/elhadry-plugin.git#main
+elhadry plugin add 'github:acme/plugins#main::path:packages/elhadry-plugin'
+```
+
+Branches, tags, complete commit hashes, and npm's `::path:` repository-subdirectory selectors are supported. Configure
+local paths directly; tarball and npm alias targets are not accepted by `plugin add`.
+
+## Reload
+
+Changes under watched config directories reload automatically. Server startup loads cached package plugins immediately,
+installs missing packages in the background, and checks unpinned npm and Git plugins for updates without changing the
+installed package. Exact npm versions and full Git commit hashes stay pinned. Changes to unwatched local dependencies
+may still require restarting Elhadry Agent.
+
+```sh
+touch .elhadry/plugins/concise/index.ts
+elhadry service restart
+```
+
+## Desktop
+
+A plugin that exports `./gui-experimental` also adds panels, commands, or settings to Elhadry Agent Desktop. The app loads
+plugins from the server it runs, so configure the plugin in your global `elhadry.json(c)` to use it in every window.
+
+```jsonc title="~/.config/elhadry/elhadry.jsonc"
+{
+  "plugins": ["elhadry-acme-plugin"],
+}
+```
+
+**Settings > Extensions > Plugins** lists them when the app's own server is selected. A plugin's switch turns off only
+its desktop UI, and **Reload** loads it again after a failure. To turn off the whole plugin, add `-` and its ID to
+`plugins`, for example `"-acme"`.
+
+## Terminal
+
+TUI-only plugins are configured separately and remain active when connected to a remote server.
+
+```json title="cli.json"
+{
+  "plugins": ["elhadry-acme-cli"]
+}
+```
+
+<Card title="Build a plugin" href="/build/plugins">
+  Create plugins that add tools, hooks, integrations, commands, agents, and other behavior.
+</Card>

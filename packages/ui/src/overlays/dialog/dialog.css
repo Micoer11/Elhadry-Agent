@@ -1,0 +1,275 @@
+/* [data-component="dialog-trigger"] { } */
+
+[data-component="dialog-overlay"] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: var(--v2-overlay-simple-overlay-scrim);
+}
+
+[data-component="dialog-v2"] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+
+  [data-slot="dialog-container"] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 480px;
+    height: 368px;
+    background: var(--v2-background-bg-layer-01);
+    box-shadow: var(--v2-elevation-overlay);
+    border-radius: 6px;
+    overflow: hidden;
+    pointer-events: auto;
+
+    [data-slot="dialog-content"] {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      width: 100%;
+      max-height: 100%;
+      flex: 1;
+      overflow: auto;
+      background: transparent;
+
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      [data-slot="dialog-header"] {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        align-self: stretch;
+        width: 100%;
+        gap: 0;
+        padding: 16px;
+        flex-shrink: 0;
+
+        [data-slot="dialog-header-title"] {
+          margin: 0;
+          flex: 1;
+          min-width: 0;
+          user-select: none;
+          font-weight: 530;
+          font-size: 13px;
+          line-height: 16px;
+          letter-spacing: -0.04px;
+          color: var(--v2-text-text-base);
+          font-variation-settings: "slnt" 0;
+        }
+
+        [data-slot="dialog-title-group"] {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+          flex: 1;
+          min-width: 0;
+        }
+
+        [data-slot="dialog-title"] {
+          margin: 0;
+          flex: none;
+          flex-grow: 0;
+          user-select: none;
+          font-weight: 530;
+          font-size: 15px;
+          line-height: 20px;
+          letter-spacing: -0.13px;
+          color: var(--v2-text-text-base);
+          font-variation-settings: "slnt" 0;
+        }
+
+        [data-slot="dialog-description"] {
+          flex: none;
+          flex-grow: 0;
+          min-width: 0;
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          user-select: none;
+          font-weight: 440;
+          font-size: 13px;
+          line-height: 20px;
+          letter-spacing: -0.04px;
+          color: var(--v2-text-text-muted);
+          font-variation-settings: "slnt" 0;
+        }
+
+        [data-slot="dialog-close-button"] {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 20px;
+          height: 20px;
+          margin-top: -2px;
+          margin-inline-end: -2px;
+          margin-inline-start: auto;
+          border-radius: 4px;
+          flex-shrink: 0;
+          cursor: pointer;
+          color: var(--v2-icon-icon-muted);
+
+          &:hover {
+            background: var(--v2-overlay-simple-overlay-hover);
+          }
+        }
+
+        &[data-hide-close] [data-slot="dialog-close-button"] {
+          display: none;
+        }
+      }
+
+      [data-slot="dialog-footer"] {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: flex-start;
+        padding: 16px;
+        gap: 8px;
+        align-self: stretch;
+        flex-shrink: 0;
+      }
+
+      [data-slot="dialog-body"] {
+        width: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        /* The body is the dialog's scrollport. This rule outranks utility classes, so callers that
+           asked for `overflow-y-auto` used to get a clipped body with no way to reach the fields
+           below the fold. Keep the scrollbar visible: without it a long form looks truncated. */
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--v2-border-border-muted) transparent;
+
+        &::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          border: 3px solid transparent;
+          border-radius: 999px;
+          background: var(--v2-border-border-muted);
+          background-clip: content-box;
+        }
+
+        &:focus-visible {
+          outline: none;
+        }
+      }
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
+  &[data-fit] {
+    [data-slot="dialog-container"] {
+      height: auto;
+
+      [data-slot="dialog-content"] {
+        min-height: 0;
+      }
+    }
+  }
+
+  &[data-size="large"] [data-slot="dialog-container"] {
+    width: 640px;
+    height: 480px;
+  }
+
+  &[data-size="x-large"] [data-slot="dialog-container"] {
+    width: min(calc(100vw - 32px), 980px);
+    height: min(calc(100vh - 92px), 600px);
+  }
+}
+
+/*
+ * Graphite dialogs (dark theme only): one calm surface for every dialog instead of the
+ * per-dialog recolouring that used to drift apart. Blue stays on the primary button.
+ */
+[data-color-scheme="dark"] [data-component="dialog-v2"] {
+  --v2-background-bg-base: #1e1f22;
+  --v2-background-bg-deep: #16171a;
+  --v2-background-bg-layer-01: #232428;
+  --v2-background-bg-layer-02: #282a2e;
+  --v2-background-bg-layer-03: #2f3135;
+  --v2-background-bg-layer-04: #383a3f;
+  --v2-text-text-base: #f2f3f5;
+  --v2-text-text-muted: #a3a5aa;
+  --v2-text-text-faint: #8b8d93;
+  --v2-text-text-contrast: #ffffff;
+  --v2-icon-icon-base: #cfd1d6;
+  --v2-icon-icon-muted: #9a9ca2;
+  --v2-border-border-muted: #2b2d31;
+  --v2-border-border-base: #33353a;
+  /* A grey focus ring: the blue focus glow reads as an unnecessary highlight inside dialogs. */
+  --v2-border-border-focus: #4b4d53;
+  --border-weak-selected: rgb(255 255 255 / 0.06);
+  --border-selected: #4b4d53;
+  --input-base: #17181b;
+}
+
+[data-color-scheme="dark"] [data-component="dialog-v2"] [data-slot="dialog-container"] {
+  position: relative;
+  background: rgb(40 41 45 / 0.98);
+  border: 1px solid #33353a;
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.42);
+  backdrop-filter: blur(14px);
+}
+
+/* A neutral hairline along the top edge, matching the composer menus. */
+[data-color-scheme="dark"] [data-component="dialog-v2"] [data-slot="dialog-container"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 16px auto;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+}
+
+/* Fields are recessed wells so they never look lighter than the surface they sit on. */
+[data-color-scheme="dark"] [data-component="dialog-v2"] [data-component="text-input-v2"] {
+  background: #17181b;
+  outline-color: #2e3035;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.45);
+}
+
+[data-color-scheme="dark"]
+  [data-component="dialog-v2"]
+  [data-component="text-input-v2"]:where(:hover):not([data-disabled], [data-invalid]):not(:focus-within) {
+  background: #1b1c20;
+}
+
+[data-color-scheme="dark"]
+  [data-component="dialog-v2"]
+  [data-component="text-input-v2"]:where(:focus-within):not([data-disabled], [data-invalid]) {
+  outline-color: #4b4d53;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.45);
+}
+
+[data-color-scheme="dark"] [data-component="dialog-v2"] [data-component="input"] {
+  --input-base: #17181b;
+  --border-weak-base: #33353a;
+  --border-weak-selected: rgb(255 255 255 / 0.06);
+  --border-selected: #4b4d53;
+}

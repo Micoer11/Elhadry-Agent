@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "version": "2.2.4",
+  "name": "@elhadry/sdk",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anomalyco/opencode.git",
+    "directory": "packages/sdk"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./workerd": "./src/workerd.ts",
+    "./workerd/effect": "./src/effect/workerd.ts"
+  },
+  "scripts": {
+    "build": "bun run script/build.ts",
+    "pack": "bun run script/pack.ts",
+    "test": "bun test --timeout 5000",
+    "typecheck": "bun check --no-script -b",
+    "typecheck:tsc": "tsc -b",
+    "verify:package": "bun run script/verify-package.ts"
+  },
+  "dependencies": {
+    "@elhadry/client": "workspace:*",
+    "@elhadry/core": "workspace:*",
+    "@elhadry/plugin": "workspace:*",
+    "@elhadry/schema": "workspace:*",
+    "@elhadry/server": "workspace:*",
+    "@elhadry/util": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@elhadry/ai": "workspace:*",
+    "@elhadry/httpapi-codegen": "workspace:*",
+    "@elhadry/protocol": "workspace:*",
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native": "catalog:"
+  }
+}

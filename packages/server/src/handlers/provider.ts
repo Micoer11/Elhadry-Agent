@@ -1,0 +1,43 @@
+import { Provider } from "@elhadry/core/provider"
+import { ProviderDiscovery } from "@elhadry/core/provider-discovery"
+import { InvalidRequestError, ProviderNotFoundError } from "@elhadry/protocol/errors"
+import { Effect } from "effect"
+import { HttpApiBuilder } from "effect/http-api"
+import { Api } from "../api"
+import { awaitPlugins, response } from "../location"
+
+export const ProviderHandler = HttpApiBuilder.group(Api, "server.provider", (handlers) =>
+  Effect.gen(function* () {
+    return handlers
+      .handle(
+        "provider.list",
+        Effect.fn(function* () {
+          yield* awaitPlugins
+          const providers = yield* Provider.Service
+          return yield* response(providers.available())
+        }),
+      )
+      .handle(
+        "provider.get",
+        Effect.fn(function* (ctx) {
+          const providers = yield* Provider.Service
+          const provider = yield* providers.get(ctx.params.providerID)
+          if (!provider)
+            return yield* new ProviderNotFoundError({
+              providerID: ctx.params.providerID,
+              message: `Provider not found: ${ctx.params.providerID}`,
+            })
+          return yield* response(Effect.succeed(provider))
+        }),
+      )
+      .handle(
+        "provider.models",
+        Effect.fn(function* (ctx) {
+          const models = yield* ProviderDiscovery.list(ctx.payload).pipe(
+            Effect.mapError((error) => new InvalidRequestError({ message: error.message, field: "baseURL" })),
+          )
+          return { data: models }
+        }),
+      )
+  }),
+)

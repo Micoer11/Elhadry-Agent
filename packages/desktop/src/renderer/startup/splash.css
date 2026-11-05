@@ -1,0 +1,23 @@
+[data-component="first-launch-splash"] :where(path, text) {
+  animation: first-launch-wordmark-draw 1000ms ease-out both;
+}
+
+[data-component="first-launch-splash"][data-drawing="pending"] :where(path, text) {
+  animation-play-state: paused;
+}
+
+@keyframes first-launch-wordmark-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="first-launch-splash"] :where(path, text) {
+    animation: none;
+    opacity: 1;
+  }
+}

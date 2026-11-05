@@ -1,0 +1,159 @@
+import { Session } from "@elhadry/schema/session"
+import { SessionMessage } from "@elhadry/schema/session-message"
+import { Location } from "@elhadry/schema/location"
+import { Schema, Struct } from "effect"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
+import {
+  InvalidCursorError,
+  MessageNotFoundError,
+  SessionBusyError,
+  SessionNotFoundError,
+  UnknownError,
+} from "../errors.js"
+import { NonNegativeInt } from "@elhadry/schema/schema"
+import { HttpApiSchema } from "effect/http-api"
+
+// Keyed by message type so a new message type cannot be left out of the filter.
+const MessageTypes = {
+  "agent-switched": true,
+  "model-switched": true,
+  "location-switched": true,
+  user: true,
+  synthetic: true,
+  system: true,
+  skill: true,
+  shell: true,
+  assistant: true,
+  compaction: true,
+  idle: true,
+} satisfies Record<SessionMessage.Type, true>
+
+export const SessionMessagesQuery = Schema.Struct({
+  limit: Schema.optional(
+    Schema.NumberFromString.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(200)),
+  ).annotate({
+    description: "Maximum number of messages to return. When omitted, the endpoint returns its default page size.",
+  }),
+  order: Schema.optional(Schema.Union([Schema.Literal("asc"), Schema.Literal("desc")])).annotate({
+    description: "Message order for the first page. Use desc for newest first or asc for oldest first.",
+  }),
+  cursor: Schema.optional(
+    Schema.String.annotate({
+      description:
+        "Opaque pagination cursor returned as cursor.previous or cursor.next in the previous response. Do not combine with order.",
+    }),
+  ),
+  type: Schema.optional(Schema.Literals(Object.keys(MessageTypes) as ReadonlyArray<SessionMessage.Type>)).annotate({
+    description:
+      "Filter by message type before pagination. When omitted, all message types are returned. Pass the same type when following cursors.",
+  }),
+}).annotate({ identifier: "SessionMessagesQuery" })
+
+const PublicLocationSwitched = Schema.Struct({
+  ...Struct.omit(SessionMessage.LocationSwitched.fields, ["location", "previous"]),
+  location: Location.PublicRef,
+  previous: Schema.Struct({
+    location: Location.PublicRef,
+    projectID: SessionMessage.LocationSwitched.fields.projectID,
+    subpath: SessionMessage.LocationSwitched.fields.subpath,
+  }).pipe(Schema.optional),
+}).annotate({ identifier: "Session.Message.LocationSwitched" })
+
+export const PublicSessionMessage = Schema.Union([
+  SessionMessage.AgentSelected,
+  SessionMessage.ModelSelected,
+  PublicLocationSwitched,
+  SessionMessage.User,
+  SessionMessage.Synthetic,
+  SessionMessage.System,
+  SessionMessage.Skill,
+  SessionMessage.Shell,
+  SessionMessage.Assistant,
+  SessionMessage.Compaction,
+  SessionMessage.Idle,
+]).annotate({ identifier: "Session.Message.Info" })
+
+/**
+ * Experimental: {@link PublicSessionMessage} as sent to clients that opt in with `X-OpenCode-Capabilities:
+ * experimental-media-uri` while `experimental.media_blob` is on. User files stored in `blob` stay `media:` refs.
+ */
+export const PublicMediaSessionMessage = Schema.Union([
+  SessionMessage.AgentSelected,
+  SessionMessage.ModelSelected,
+  PublicLocationSwitched,
+  SessionMessage.MediaUser,
+  SessionMessage.Synthetic,
+  SessionMessage.System,
+  SessionMessage.Skill,
+  SessionMessage.Shell,
+  SessionMessage.Assistant,
+  SessionMessage.Compaction,
+  SessionMessage.Idle,
+]).annotate({ identifier: "Session.Message.MediaInfo" })
+
+const MessagesCursor = Schema.Struct({
+  previous: Schema.String.pipe(Schema.optional),
+  next: Schema.String.pipe(Schema.optional),
+})
+
+/** Experimental: the `session.messages` response for clients that opt into `experimental-media-uri`. */
+export const SessionMediaMessagesResponse = Schema.Struct({
+  data: Schema.Array(PublicMediaSessionMessage),
+  cursor: MessagesCursor,
+})
+
+/** Experimental: the `session.message` response for clients that opt into `experimental-media-uri`. */
+export const SessionMediaMessageResponse = Schema.Struct({ data: PublicMediaSessionMessage })
+
+export const MessageGroup = HttpApiGroup.make("server.message")
+  .add(
+    HttpApiEndpoint.get("session.messages", "/api/session/:sessionID/message", {
+      params: { sessionID: Session.ID },
+      query: SessionMessagesQuery,
+      success: Schema.Struct({
+        data: Schema.Array(PublicSessionMessage),
+        cursor: MessagesCursor,
+      }).annotate({ identifier: "SessionMessagesResponse" }),
+      error: [InvalidCursorError, SessionNotFoundError, UnknownError],
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "session.message.list",
+        summary: "Get session messages",
+        description:
+          "Retrieve projected messages for a session, optionally filtered by type. Items keep the requested order across pages; use cursor.next or cursor.previous to move through the ordered timeline, passing the same type filter on each page.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.post("session.message.remove", "/api/session/:sessionID/message/:messageID/remove", {
+      params: { sessionID: Session.ID, messageID: SessionMessage.ID },
+      success: HttpApiSchema.NoContent,
+      error: [SessionNotFoundError, MessageNotFoundError, SessionBusyError, UnknownError],
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "session.message.remove",
+        summary: "Delete a user turn",
+        description: "Permanently delete a user message together with every message projected in its turn.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.post("session.message.files.remove", "/api/session/:sessionID/message/:messageID/files/remove", {
+      params: { sessionID: Session.ID, messageID: SessionMessage.ID },
+      payload: Schema.Struct({ indexes: Schema.Array(NonNegativeInt) }),
+      success: HttpApiSchema.NoContent,
+      error: [SessionNotFoundError, MessageNotFoundError, UnknownError],
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "session.message.files.remove",
+        summary: "Delete message attachments",
+        description: "Delete selected attachments from a user message without removing the message itself.",
+      }),
+    ),
+  )
+  .annotateMerge(
+    OpenApi.annotations({
+      title: "session",
+      description: "Experimental message routes.",
+    }),
+  )

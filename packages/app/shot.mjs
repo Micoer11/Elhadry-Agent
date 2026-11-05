@@ -1,0 +1,17 @@
+import { chromium } from "playwright"
+
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+page.on("console", (message) => console.log("console:", message.type(), message.text()))
+page.on("pageerror", (error) => console.log("pageerror:", error.message))
+await page.goto("http://localhost:5173/", { waitUntil: "networkidle" })
+await page.waitForTimeout(4000)
+await page.screenshot({ path: "C:/Users/DELL/AppData/Local/Temp/elhadry-shell.png" })
+console.log("dir:", await page.evaluate(() => document.documentElement.dir))
+console.log("theme:", await page.evaluate(() => JSON.stringify({ theme: document.documentElement.dataset.theme, scheme: document.documentElement.dataset.colorScheme })))
+console.log("sidebar:", await page.locator('[data-slot="vertical-tabs-sidebar"]').count())
+const box = await page.locator('[data-slot="vertical-tabs-sidebar"]').boundingBox().catch(() => null)
+console.log("sidebar box:", JSON.stringify(box))
+console.log("settings btn:", await page.locator('[data-action="sidebar-settings"]').count())
+console.log("body bg:", await page.evaluate(() => getComputedStyle(document.body).backgroundColor))
+await browser.close()

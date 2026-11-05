@@ -1,0 +1,185 @@
+name: build-release
+
+# Builds the Windows desktop app and CLI on GitHub-hosted runners, then publishes
+# a GitHub Release. Nothing is built on a developer machine.
+#
+# Source only lives in this repository. Binaries, node_modules and build output
+# are never committed; they exist only as Release assets.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v (for example 0.1.0)"
+        required: true
+        type: string
+      publish:
+        description: "Create the GitHub Release"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            version="$INPUT_VERSION"
+            tag="v$version"
+          else
+            tag="$REF_NAME"
+            version="${tag#v}"
+          fi
+          if [ -z "$version" ]; then
+            echo "version is required" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "building $tag ($version)"
+
+  cli-windows:
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build CLI
+        working-directory: packages/cli
+        env:
+          OPENCODE_CHANNEL: latest
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          # The desktop bundles the baseline x64 CLI (see CLI_BINARIES in packages/desktop/scripts/utils.ts).
+          OPENCODE_TARGET: windows-x64-baseline
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun run build && rm -rf dist/.bun
+      - name: Upload CLI
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-windows
+          path: packages/cli/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop-windows:
+    needs: [version, cli-windows]
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Download CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-windows
+          path: packages/cli/dist
+      - name: Build desktop
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: latest
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_CLI_DIST: ${{ github.workspace }}/packages/cli/dist
+          NODE_OPTIONS: --max-old-space-size=4096
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: bun run build
+      - name: Package desktop
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: latest
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_CLI_DIST: ${{ github.workspace }}/packages/cli/dist
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: bun run package:win
+      - name: List packages
+        working-directory: packages/desktop
+        run: ls -la dist
+      - name: Upload desktop
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [version, desktop-windows]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download desktop
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-windows
+          path: assets
+      - name: Write version.json
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          cd assets
+          ls -la
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+
+          version = os.environ["VERSION"]
+          tag = os.environ["TAG"]
+          assets = {}
+          for path in sorted(pathlib.Path(".").iterdir()):
+              if not path.is_file():
+                  continue
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              assets[path.name] = {"sha256": digest, "size": path.stat().st_size}
+          manifest = {
+              "version": version,
+              "tag": tag,
+              "repository": "Micoer11/Elhadry-Agent",
+              "platforms": {"windows-x64": assets},
+          }
+          pathlib.Path("version.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Elhadry Agent $VERSION" \
+            --notes "Elhadry Agent $VERSION for Windows." \
+            assets/*
