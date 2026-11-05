@@ -65,7 +65,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -81,7 +81,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun run build && rm -rf dist/.bun
       - name: Upload CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cli-windows
           path: packages/cli/dist
@@ -93,14 +93,14 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Download CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cli-windows
           path: packages/cli/dist
@@ -125,7 +125,7 @@ jobs:
         working-directory: packages/desktop
         run: ls -la dist
       - name: Upload desktop
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: desktop-windows
           path: |
@@ -135,15 +135,24 @@ jobs:
           retention-days: 7
 
   release:
-    needs: [version, desktop-windows]
+    needs: [version, cli-windows, desktop-windows]
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
     steps:
       - name: Download desktop
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: desktop-windows
           path: assets
+      - name: Download CLI
+        uses: actions/download-artifact@v5
+        with:
+          name: cli-windows
+          path: cli
+      - name: Add CLI to assets
+        run: |
+          cp cli/cli-windows-x64-baseline/bin/elhadry.exe assets/elhadry-cli-windows-x64.exe
+          ls -la assets
       - name: Write version.json
         env:
           VERSION: ${{ needs.version.outputs.version }}

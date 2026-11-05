@@ -1,84 +1,84 @@
 <p align="center">
-  <a href="https://elhadry.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="شعار Elhadry Agent">
-    </picture>
-  </a>
+  <img src="packages/desktop/app-icon.png" width="112" alt="Elhadry Agent" />
 </p>
-<p align="center">وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر.</p>
-<p align="center">
-  <a href="https://www.npmjs.com/package/@elhadry/cli"><img alt="npm" src="https://img.shields.io/npm/v/@elhadry/cli?style=flat-square" /></a>
-</p>
+
+<h1 align="center">Elhadry Agent</h1>
+
+<p align="center">وكيل برمجة بالذكاء الاصطناعي يعمل على جهازك.</p>
 
 <p align="center">
   <a href="README.md">English</a> |
   <a href="README.ar.md">العربية</a>
 </p>
 
-[![Elhadry Agent Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://elhadry.ai)
-
 ---
 
-### التثبيت
+## التنزيل
 
-```bash
-# YOLO
-curl -fsSL https://elhadry.ai/v2/install | bash
+كل إصدار يتم بناؤه تلقائياً على GitHub ونشره في
+[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent/releases/latest).
+لا تحتاج إلى بناء أي شيء على جهازك.
 
-# مديري الحزم
-npm i -g @elhadry/cli@latest      # او bun/pnpm/yarn
+| الملف                          | الاسم                              |
+| ------------------------------ | ---------------------------------- |
+| مثبّت ويندوز                   | `elhadry-desktop-windows-x64.exe`  |
+| نسخة محمولة بدون تثبيت         | `elhadry-desktop-windows-x64.zip`  |
+| أداة سطر الأوامر (CLI)         | `elhadry-cli-windows-x64.exe`      |
+| معلومات التحديث                | `version.json`                     |
+
+هذه الروابط تشير دائماً إلى أحدث إصدار:
+
+- المثبّت: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.exe`
+- المحمول: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.zip`
+- سطر الأوامر: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe`
+
+### أول تشغيل على ويندوز
+
+النسخ غير موقّعة رقمياً، لذلك قد يظهر تحذير من Windows SmartScreen:
+
+1. اضغط **More info** (مزيد من المعلومات).
+2. اضغط **Run anyway** (تشغيل على أي حال).
+
+النسخة المحمولة تحتاج فقط إلى فك الضغط ثم تشغيل `Elhadry Agent.exe`.
+
+## أداة سطر الأوامر
+
+افتح PowerShell ونزّل الأداة:
+
+```powershell
+curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe
+& "$env:LOCALAPPDATA\elhadry.exe" --version
 ```
 
-> [!TIP]
-> احذف الاصدارات الاقدم من 0.1.x قبل التثبيت.
+ثم شغّلها داخل مجلد المشروع الذي تريد العمل عليه:
 
-### تطبيق سطح المكتب (BETA)
-
-يتوفر Elhadry Agent ايضا كتطبيق سطح مكتب. قم بالتنزيل من [elhadry.ai/download](https://elhadry.ai/download).
-
-| المنصة                | التنزيل                            |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `elhadry-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `elhadry-desktop-mac-x64.dmg`     |
-| Windows               | `elhadry-desktop-win-x64.exe`     |
-| Linux                 | `.deb` او `.rpm` او AppImage       |
-
-```bash
+```powershell
+cd C:\path\to\your\project
+& "$env:LOCALAPPDATA\elhadry.exe"
 ```
 
-#### مجلد التثبيت
+## التحديثات
 
-يثبت سكربت التثبيت Elhadry Agent في `$HOME/.elhadry/bin`.
+يتحقق التطبيق من ملف `version.json` في أحدث إصدار ويخبرك عند توفر نسخة جديدة.
+للتحديث يدوياً، نزّل أحدث مثبّت من
+[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent/releases/latest) وشغّله؛
+إعداداتك ومحادثاتك تبقى كما هي.
 
-### Agents
+كل إصدار يحتفظ بملفاته، لذلك يمكنك تنزيل أي إصدار أقدم وتثبيته في أي وقت.
 
-يتضمن Elhadry Agent وكيليْن (Agents) مدمجين يمكنك التبديل بينهما باستخدام زر `Tab`.
+## البناء من المصدر
 
-- **build** - الافتراضي، وكيل بصلاحيات كاملة لاعمال التطوير
-- **plan** - وكيل للقراءة فقط للتحليل واستكشاف الكود
-  - يرفض تعديل الملفات افتراضيا
-  - يطلب الاذن قبل تشغيل اوامر bash
-  - مثالي لاستكشاف قواعد كود غير مألوفة او لتخطيط التغييرات
+البناء يتم على GitHub Actions (ملف `.github/workflows/build-release.yml`)
+ثم يُنشر الناتج كإصدار. للبناء محلياً:
 
-بالاضافة الى ذلك يوجد وكيل فرعي **general** للبحث المعقد والمهام متعددة الخطوات.
-يستخدم داخليا ويمكن استدعاؤه بكتابة `@general` في الرسائل.
+```bash
+bun install
+bun run --cwd packages/desktop dev
+```
 
-تعرف على المزيد حول [agents](https://elhadry.ai/v2/docs/agents).
+المستودع يحتوي على الكود المصدري فقط. لا يتم رفع `node_modules` ولا ملفات
+البناء ولا الملفات التنفيذية أبداً.
 
-### التوثيق
+## الترخيص
 
-لمزيد من المعلومات حول كيفية ضبط Elhadry Agent، [**راجع التوثيق**](https://elhadry.ai/v2/docs).
-
-### المساهمة
-
-اذا كنت مهتما بالمساهمة في Elhadry Agent، يرجى قراءة [contributing docs](./CONTRIBUTING.md) قبل ارسال pull request.
-
-### البناء فوق Elhadry Agent
-
-اذا كنت تعمل على مشروع مرتبط بـ Elhadry Agent ويستخدم "elhadry" كجزء من اسمه (مثل "elhadry-dashboard" او "elhadry-mobile")، يرجى اضافة ملاحظة في README توضح انه ليس مبنيا بواسطة فريق Elhadry Agent ولا يرتبط بنا بأي شكل.
-
----
-
-**انضم الى مجتمعنا** [Discord](https://discord.gg/elhadry) | [X.com](https://x.com/elhadry)
+MIT. راجع ملف [LICENSE](./LICENSE).

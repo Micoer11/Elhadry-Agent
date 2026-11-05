@@ -1,77 +1,85 @@
 <p align="center">
-  <a href="https://elhadry.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Elhadry Agent logo">
-    </picture>
-  </a>
+  <img src="packages/desktop/app-icon.png" width="112" alt="Elhadry Agent" />
 </p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://www.npmjs.com/package/@elhadry/cli"><img alt="npm" src="https://img.shields.io/npm/v/@elhadry/cli?style=flat-square" /></a>
-</p>
+
+<h1 align="center">Elhadry Agent</h1>
+
+<p align="center">AI coding agent that runs on your own computer.</p>
 
 <p align="center">
   <a href="README.md">English</a> |
   <a href="README.ar.md">العربية</a>
 </p>
 
-[![Elhadry Agent Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://elhadry.ai)
-
 ---
 
-### Installation
+## Download
 
-```bash
-# YOLO
-curl -fsSL https://elhadry.ai/v2/install | bash
+Every version is built automatically on GitHub and published on the
+[Releases page](https://github.com/Micoer11/Elhadry-Agent/releases/latest).
+Nothing needs to be compiled on your machine.
 
-# Package managers
-npm i -g @elhadry/cli@latest      # or bun/pnpm/yarn
+| What                      | File                               |
+| ------------------------- | ---------------------------------- |
+| Windows installer         | `elhadry-desktop-windows-x64.exe`  |
+| Windows portable (no install) | `elhadry-desktop-windows-x64.zip` |
+| Windows command line tool | `elhadry-cli-windows-x64.exe`      |
+| Update information        | `version.json`                     |
+
+These links always point at the newest release:
+
+- Installer: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.exe`
+- Portable: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.zip`
+- CLI: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe`
+
+### First run on Windows
+
+The builds are not code signed, so Windows SmartScreen may show a warning:
+
+1. Click **More info**.
+2. Click **Run anyway**.
+
+The portable zip only needs to be extracted and `Elhadry Agent.exe` started.
+
+## Command line tool
+
+Open PowerShell and download the CLI:
+
+```powershell
+curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe
+& "$env:LOCALAPPDATA\elhadry.exe" --version
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+Then start it in the folder you want to work in:
 
-### Desktop App (BETA)
+```powershell
+cd C:\path\to\your\project
+& "$env:LOCALAPPDATA\elhadry.exe"
+```
 
-Elhadry Agent is also available as a desktop application. Download it from [elhadry.ai/download](https://elhadry.ai/download).
+## Updates
 
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `elhadry-desktop-mac-arm64.dmg`    |
-| macOS (Intel)         | `elhadry-desktop-mac-x64.dmg`      |
-| Windows               | `elhadry-desktop-win-x64.exe`      |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+The app checks `version.json` in the newest release and tells you when a newer
+version is available. To update by hand, download the newest installer from the
+[Releases page](https://github.com/Micoer11/Elhadry-Agent/releases/latest) and run
+it; your settings and chats are kept.
 
-#### Installation Directory
+Each release keeps its own files, so an older version can be installed again at
+any time from the Releases page.
 
-The install script installs Elhadry Agent to `$HOME/.elhadry/bin`.
+## Build from source
 
-### Agents
+The build runs on GitHub Actions (`.github/workflows/build-release.yml`) and
+publishes the result as a release. To build locally:
 
-Elhadry Agent includes two built-in agents you can switch between with the `Tab` key.
+```bash
+bun install
+bun run --cwd packages/desktop dev
+```
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
+The repository contains source code only. `node_modules`, build output and
+binaries are never committed.
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
+## License
 
-Learn more about [agents](https://elhadry.ai/docs/agents).
-
-### Documentation
-
-For more info on how to configure Elhadry Agent, [**head over to our docs**](https://elhadry.ai/docs).
-
-### Contributing
-
-If you're interested in contributing to Elhadry Agent, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on Elhadry Agent
-
-If you are working on a project that's related to Elhadry Agent and is using "elhadry" as part of its name, for example "elhadry-dashboard" or "elhadry-mobile", please add a note to your README to clarify that it is not built by the Elhadry Agent team and is not affiliated with us in any way.
+MIT. See [LICENSE](./LICENSE).
