@@ -3,6 +3,7 @@ import { createMemo, Match, Show, Switch } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { usePlugin } from "../../plugin/context"
 import { Slot } from "../../plugin/render"
+import { starGlyph } from "../../logo"
 
 export function homeFooterVisibility(width: number) {
   return {
@@ -25,7 +26,7 @@ function Mcp(props: { context: Plugin.Context }) {
         <text fg={props.context.theme.text.base}>
           <Switch>
             <Match when={failed()}>
-              <span style={{ fg: props.context.theme.text.feedback.error.base }}>⊙ </span>
+              <span style={{ fg: props.context.theme.text.feedback.error.base }}>× </span>
               {failed()} MCP failed
             </Match>
             <Match when={true}>
@@ -35,7 +36,7 @@ function Mcp(props: { context: Plugin.Context }) {
                     count() > 0 ? props.context.theme.text.feedback.success.base : props.context.theme.text.muted,
                 }}
               >
-                ⊙{" "}
+                ○{" "}
               </span>
               {count()} MCP
             </Match>
@@ -63,7 +64,7 @@ function Plugins(props: { context: Plugin.Context }) {
     <Show when={failed()}>
       <box gap={1} flexDirection="row" flexShrink={0} onMouseUp={() => props.context.keymap.dispatch("plugins.list")}>
         <text fg={props.context.theme.text.base}>
-          <span style={{ fg: props.context.theme.text.feedback.error.base }}>⊙ </span>
+          <span style={{ fg: props.context.theme.text.feedback.error.base }}>× </span>
           {failed()} plugin{failed() === 1 ? "" : "s"} failed
         </text>
         <Show when={visibility().pluginCommand}>
@@ -80,25 +81,38 @@ function View(props: { context: Plugin.Context }) {
 
   return (
     <Show when={dimensions().height >= 14 && dimensions().width >= 44}>
-      <box
-        width="100%"
-        paddingTop={dimensions().height < 16 ? 0 : 1}
-        paddingBottom={dimensions().height < 16 ? 0 : 1}
-        paddingLeft={2}
-        paddingRight={2}
-        flexDirection="row"
-        flexShrink={0}
-        gap={2}
-      >
-        <Mcp context={props.context} />
-        <Plugins context={props.context} />
-        <Slot path="home.footer.status" />
-        <box flexGrow={1} />
-        <Show when={visibility().version}>
-          <box flexShrink={0}>
-            <text fg={props.context.theme.text.muted}>{props.context.app.version}</text>
+      <box width="100%" flexDirection="column" flexShrink={0}>
+        <text fg={props.context.theme.border.base} selectable={false}>
+          {"─".repeat(dimensions().width)}
+        </text>
+        <box
+          paddingTop={dimensions().height < 16 ? 0 : 1}
+          paddingBottom={dimensions().height < 16 ? 0 : 1}
+          paddingLeft={2}
+          paddingRight={2}
+          flexDirection="row"
+          flexShrink={0}
+          gap={2}
+          alignItems="center"
+        >
+          <box flexShrink={0} flexDirection="row" gap={1}>
+            <text fg={props.context.theme.text.action.primary.selected} selectable={false}>
+              {starGlyph}
+            </text>
+            <text fg={props.context.theme.text.base} selectable={false}>
+              Elhadry <span style={{ fg: props.context.theme.text.muted }}>Agent</span>
+            </text>
           </box>
-        </Show>
+          <Mcp context={props.context} />
+          <Plugins context={props.context} />
+          <Slot path="home.footer.status" />
+          <box flexGrow={1} />
+          <Show when={visibility().version}>
+            <box flexShrink={0}>
+              <text fg={props.context.theme.text.muted}>{props.context.app.version}</text>
+            </box>
+          </Show>
+        </box>
       </box>
     </Show>
   )

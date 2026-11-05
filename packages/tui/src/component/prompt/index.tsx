@@ -1684,7 +1684,7 @@ export function Prompt(props: PromptProps) {
           borderColor={borderHighlight()}
           customBorderChars={{
             ...SplitBorder.customBorderChars,
-            bottomLeft: "╹",
+            bottomLeft: "▄",
           }}
         >
           <box
@@ -1876,7 +1876,7 @@ export function Prompt(props: PromptProps) {
           borderColor={borderHighlight()}
           customBorderChars={{
             ...EmptyBorder,
-            vertical: promptBg().a !== 0 ? "╹" : " ",
+            vertical: promptBg().a !== 0 ? "▄" : " ",
           }}
         >
           <box

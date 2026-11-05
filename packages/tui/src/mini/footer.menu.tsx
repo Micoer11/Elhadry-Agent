@@ -182,7 +182,7 @@ export function RunFooterMenu(props: {
         >
           {border() ? (
             <text fg={props.theme().border} wrapMode="none">
-              {props.mono ? "|" : "┃"}
+              {props.mono ? "|" : "▌"}
             </text>
           ) : undefined}
           <box

@@ -269,7 +269,7 @@ export function RunPromptBody(props: {
       <box
         border={["left"]}
         borderColor={props.rail()}
-        customBorderChars={{ ...EmptyBorder, vertical: props.mono ? "|" : "┃" }}
+        customBorderChars={{ ...EmptyBorder, vertical: props.mono ? "|" : "▌" }}
         paddingLeft={1}
         paddingRight={2}
         onSizeChange={props.onSizeChange}

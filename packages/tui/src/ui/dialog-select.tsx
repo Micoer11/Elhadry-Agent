@@ -965,7 +965,7 @@ function DialogSelectRow(props: {
     <Show when={newDesigns()} fallback={row()}>
       <box flexDirection="row">
         <text width={1} flexShrink={0} fg={theme.text.formfield.focused}>
-          {props.active ? "┃" : " "}
+          {props.active ? "▌" : " "}
         </text>
         {row()}
       </box>

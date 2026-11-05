@@ -169,6 +169,15 @@ const BUILDS_OWN_URL = new Set([
   "aisdk:watsonx-ai-provider",
 ])
 
+// The upstream catalog still names the two first-party providers "OpenCode"; every surface shows the
+// Elhadry product names instead.
+const PRODUCT_PROVIDER_NAMES: Record<string, string> = {
+  opencode: "Elhadry Zen",
+  "opencode-go": "Elhadry Agent Go",
+}
+
+const providerName = (id: string, name: string) => PRODUCT_PROVIDER_NAMES[id] ?? name
+
 const normalize = Effect.fnUntraced(function* (catalog: Record<string, unknown>) {
   const failed: { readonly model: string; readonly issue: unknown }[] = []
   const unknown = new Set<string>()
@@ -193,7 +202,7 @@ const normalize = Effect.fnUntraced(function* (catalog: Record<string, unknown>)
     const baseURL = urls.every((url) => url !== undefined) ? mostCommon(urls) : undefined
     const info = {
       id: providerID,
-      name: item.name,
+      name: providerName(item.id, item.name),
       activation: "auto",
       package: packageName,
       ...(baseURL ? { settings: { baseURL } } : {}),

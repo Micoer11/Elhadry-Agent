@@ -1018,7 +1018,7 @@ export function RunFooterView(props: RunFooterViewProps) {
           borderColor={theme().border}
           customBorderChars={{
             ...EMPTY_BORDER,
-            vertical: props.mono ? "|" : "┃",
+            vertical: props.mono ? "|" : "▌",
           }}
         >
           <RunFooterSubagentBody
