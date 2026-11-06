@@ -5,7 +5,7 @@ import { Dialog } from "@elhadry/ui/dialog"
 import { useExtension, type DialogHandle, type SetupContext } from "../sdk"
 import type definition from "./index"
 
-const CHANGELOG_URL = "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/changelog.json"
+const CHANGELOG_URL = "https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/changelog.json"
 
 type Highlight = {
   title: string

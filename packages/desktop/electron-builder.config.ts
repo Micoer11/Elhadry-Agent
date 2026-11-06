@@ -275,14 +275,13 @@ export function getConfig() {
         appId,
         productName: "Elhadry Agent",
         protocols: { name: "Elhadry Agent", schemes: ["elhadry"] },
-        // The source repository is private, so releases are mirrored to a public repository that serves both the
-        // manual download links and the update feed. A generic provider reads `latest.yml` and the `.blockmap`
-        // directly from the latest release, which avoids the unauthenticated GitHub API rate limit that the
-        // github provider would spend one request per launch against.
+        // One public repository serves both the manual download links and the update feed. A generic provider reads
+        // `latest.yml` and the `.blockmap` directly from the latest release, which avoids the unauthenticated GitHub
+        // API rate limit that the github provider would spend one request per launch against.
         publish: [
           {
             provider: "generic",
-            url: "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download",
+            url: "https://github.com/Micoer11/Elhadry-Agent/releases/latest/download",
             channel: "latest",
           },
         ],

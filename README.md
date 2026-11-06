@@ -16,7 +16,7 @@
 ## Download
 
 Every version is built automatically on GitHub and published on the
-[Releases page](https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest).
+[Releases page](https://github.com/Micoer11/Elhadry-Agent/releases/latest).
 Nothing needs to be compiled on your machine.
 
 | What                      | File                               |
@@ -28,9 +28,9 @@ Nothing needs to be compiled on your machine.
 
 These links always point at the newest release:
 
-- Installer: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-desktop-windows-x64.exe`
-- Portable: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-desktop-windows-x64.zip`
-- CLI: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-cli-windows-x64.exe`
+- Installer: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.exe`
+- Portable: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.zip`
+- CLI: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe`
 
 ### First run on Windows
 
@@ -46,7 +46,7 @@ The portable zip only needs to be extracted and `Elhadry Agent.exe` started.
 Open PowerShell and download the CLI:
 
 ```powershell
-curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-cli-windows-x64.exe
+curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe
 & "$env:LOCALAPPDATA\elhadry.exe" --version
 ```
 
@@ -68,7 +68,7 @@ chats are kept.
 
 You can also check by hand from **Settings → Updates**, or download the newest
 installer from the
-[Releases page](https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest)
+[Releases page](https://github.com/Micoer11/Elhadry-Agent/releases/latest)
 and run it.
 
 Each release keeps its own files, so an older version can be installed again at

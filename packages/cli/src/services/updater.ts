@@ -15,9 +15,8 @@ import { errorMessage } from "../util/error"
 
 export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew", "winget"] as const
 
-// The source repository is private, so the workflow mirrors every build to this public repository. It serves the
-// manual download links and the update feed alike.
-const releasesRepository = "Micoer11/Elhadry-Agent-Releases"
+// The public repository serves both the manual download links and the update feed from one latest release.
+const releasesRepository = "Micoer11/Elhadry-Agent"
 const releases = `https://github.com/${releasesRepository}/releases`
 // Only the Windows CLI is published today; an ARM64 Windows machine runs this x64 build under emulation.
 const cliAsset = "elhadry-cli-windows-x64.exe"
@@ -286,7 +285,7 @@ const make = Effect.gen(function* () {
     }
   }
 
-  // The update server this fork inherited does not exist, so releases come from the public mirror's manifest. It is
+  // The update server this fork inherited does not exist, so releases come from the repository's manifest. It is
   // the same file the desktop updater and the download links use, which keeps every edition on one version.
   const manifest = Effect.fnUntraced(function* (version?: string) {
     const title = "Could not check for Elhadry Agent updates"

@@ -235,7 +235,7 @@ it.live("bun ignores install cache cleanup failures", () =>
           "-fsSL",
           "-o",
           image,
-          "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/download/v2.3.4/elhadry-cli-windows-x64.exe",
+          "https://github.com/Micoer11/Elhadry-Agent/releases/download/v2.3.4/elhadry-cli-windows-x64.exe",
         ],
       ])
       expect(yield* test.fs.readDirectory(test.global.cache)).toEqual([])
@@ -337,7 +337,7 @@ it.live("Homebrew Core installs check and upgrade the Core formula", () =>
     expect(yield* test.updater.latest("npm")).toBe("2.3.4")
     expect(test.requests).toEqual([
       "https://formulae.brew.sh/api/formula/elhadry.json",
-      "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
+      "https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/version.json",
     ])
   }),
 )
@@ -350,8 +350,8 @@ it.live("Homebrew Core installs check and upgrade the Core formula", () =>
       yield* test.updater.upgrade("brew", "2.3.4")
       expect(test.commands).toEqual([["brew", "upgrade", `Micoer11/tap/${formula}`]])
       expect(test.requests).toEqual([
-        "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
-        "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
+        "https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/version.json",
+        "https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/version.json",
       ])
     }),
   )

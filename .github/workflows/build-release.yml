@@ -146,7 +146,7 @@ jobs:
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
     env:
-      RELEASES_REPOSITORY: Micoer11/Elhadry-Agent-Releases
+      RELEASES_REPOSITORY: Micoer11/Elhadry-Agent
     steps:
       - name: Download desktop
         uses: actions/download-artifact@v5
@@ -191,7 +191,9 @@ jobs:
           pathlib.Path("version.json").write_text(json.dumps(manifest, indent=2) + "\n")
           print(json.dumps(manifest, indent=2))
           PY
-      - name: Publish source release
+      # One release serves both the download links and the update feed: its `version.json`, `latest.yml` and binaries
+      # are exactly what the desktop and terminal updaters read from `releases/latest/download`.
+      - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
@@ -200,19 +202,6 @@ jobs:
           gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Elhadry Agent $VERSION" \
-            --notes "Elhadry Agent $VERSION for Windows." \
-            assets/*
-      # The source repository is private, so end users and the updater read the same assets from this public mirror.
-      - name: Publish update feed
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          TAG: ${{ needs.version.outputs.tag }}
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          gh release delete "$TAG" --repo "$RELEASES_REPOSITORY" --yes --cleanup-tag || true
-          gh release create "$TAG" \
-            --repo "$RELEASES_REPOSITORY" \
             --latest \
             --title "Elhadry Agent $VERSION" \
             --notes "Elhadry Agent $VERSION for Windows." \

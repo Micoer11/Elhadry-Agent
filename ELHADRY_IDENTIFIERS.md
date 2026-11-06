@@ -55,22 +55,20 @@ migration and a compatibility alias.
 The fork owns its source and release hosting; the upstream names below still
 appear where a real external contract requires them:
 
-- Source repository `Micoer11/Elhadry-Agent` (private). Binaries and the update
-  feed are mirrored to the public repository
-  `Micoer11/Elhadry-Agent-Releases`, which serves
+- Source repository `Micoer11/Elhadry-Agent` (public). It is both the source and
+  the release host, serving
   `releases/latest/download/version.json`, `latest.yml`, the installers, and
   their `.blockmap` files.
 - Homebrew tap `Micoer11/tap`, winget ID `Elhadry.Agent`, and the CLI release
   manifest at
-  `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json`.
+  `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/version.json`.
   AUR, Scoop, and the GHCR image are not published by this fork.
 - Upstream Cloudflare zones (`opencode.ai`, `beta.opencode.ai`,
   `trust.opencode.ai`), R2 buckets `opencode-*-files`, Worker/D1 names, and the
   `models.opencode.ai` model catalog. The `opencode` provider needs these
   endpoints, so they stay until the provider itself is replaced.
-- Publishing a release needs `RELEASES_TOKEN` with `contents: write` on the
-  public releases repository. Replace the broad OAuth token with a fine-grained
-  PAT limited to that repository.
+- Releases are published with the workflow's `GITHUB_TOKEN`; no separate
+  release token is needed.
 
 ## Pending
 
