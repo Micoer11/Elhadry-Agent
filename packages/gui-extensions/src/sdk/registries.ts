@@ -337,6 +337,12 @@ export interface SettingsPage {
    * section.
    */
   readonly section?: "general"
+  /**
+   * Where a page sits in the Settings navigation; ignored with `page`.
+   * - `main`: with the host's first group, after its own tabs. The default.
+   * - `end`: in a group of its own at the end, just before About.
+   */
+  readonly placement?: "main" | "end"
   /** Nav label of a page; search shows it as the section of every entry, except rows placed in a host `section`. */
   readonly title: string
   /** The page's nav icon. */

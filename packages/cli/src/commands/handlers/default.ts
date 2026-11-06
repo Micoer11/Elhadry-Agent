@@ -81,7 +81,7 @@ export default Runtime.handler(Commands, (input) =>
           }),
         ),
         checking.withPermits(1),
-        Effect.repeat(Schedule.spaced("10 minutes")),
+        Effect.repeat(Schedule.spaced("30 minutes")),
         Effect.forkScoped({ startImmediately: true }),
       )
     preflight.loading()

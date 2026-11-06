@@ -104,6 +104,14 @@ jobs:
         with:
           name: cli-windows
           path: packages/cli/dist
+      # The packaged app reports `app.getVersion()`, so the desktop package.json carries the release version.
+      - name: Set desktop version
+        working-directory: packages/desktop
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          bun -e 'const path = "package.json"; const pkg = await Bun.file(path).json(); pkg.version = process.env.OPENCODE_VERSION; await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n")'
+          grep -q "\"version\": \"$OPENCODE_VERSION\"" package.json
       - name: Build desktop
         working-directory: packages/desktop
         env:
@@ -126,8 +134,11 @@ jobs:
         run: ls -la dist
       - name: Verify update metadata
         working-directory: packages/desktop
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
         run: |
           test -s dist/latest.yml
+          grep -q "^version: $OPENCODE_VERSION$" dist/latest.yml
           ls dist/*.blockmap
       - name: Upload desktop
         uses: actions/upload-artifact@v5

@@ -3,7 +3,7 @@ import { Effect, Exit, Scope } from "effect"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { MenubarItem, type MainSetup } from "../sdk/main"
-import { Updater } from "./contract"
+import { AutoInstall, Updater } from "./contract"
 import type definition from "./index"
 import { logContext } from "./log"
 import { make } from "./machine"
@@ -20,6 +20,7 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
   const runPromise = Effect.runPromiseWith(context)
   const runFork = Effect.runForkWith(context)
   const ready = ctx.stores.ready
+  const autoInstall = ctx.stores.autoInstall
 
   // electron-updater loads only in packaged builds that update, after the first window is up.
   const platform = enabled
@@ -46,6 +47,7 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
         set: (value) => Effect.sync(() => ready.set(value)),
         clear: Effect.sync(() => ready.set(null)),
       },
+      autoInstall: () => autoInstall.value.enabled,
       changed: () => publish.changed(),
     }).pipe(Scope.provide(scope)),
   )
@@ -55,6 +57,14 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
     check: () => runPromise(updater.check),
     download: () => runPromise(updater.download),
     install: () => runPromise(updater.install),
+  })
+
+  const autoProvider = ctx.provide(AutoInstall, {
+    state: () => autoInstall.value.enabled,
+    set: (enabled) => {
+      autoInstall.set({ enabled })
+      autoProvider.changed()
+    },
   })
 
   publish.changed = () => provider.changed()

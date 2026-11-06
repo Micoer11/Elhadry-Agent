@@ -61,13 +61,16 @@ cd C:\path\to\your\project
 
 Elhadry Agent updates itself. It checks the newest release when it starts and
 again every 30 minutes, then shows a **Download Elhadry Agent** button in the
-sidebar above Settings when a newer version exists. The download starts only
-after you confirm it, and it fetches just the parts that changed when possible.
+sidebar above Settings when a newer version exists. By default the download
+starts only after you confirm it, and it fetches just the parts that changed
+when possible. Turn on **Install updates automatically** in **Settings →
+Updates** to download, install and restart as soon as a check finds an update.
 After the download, install and restart from the same button; your settings and
 chats are kept.
 
-You can also check by hand from **Settings → Updates**, or download the newest
-installer from the
+You can also check by hand from **Settings → Updates**, which lists the newest
+published version and the four previous ones with a download button each, or
+download the newest installer from the
 [Releases page](https://github.com/Micoer11/Elhadry-Agent/releases/latest)
 and run it.
 

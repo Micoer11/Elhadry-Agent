@@ -318,7 +318,7 @@ The updater's actions branch on the `Live` value and still answer while its main
 <!-- source: src/updater/renderer.tsx#act -->
 
 ```tsx
-const act = (name: "check" | "install") => {
+const act = (name: "check" | "download" | "install") => {
   const live = updater()
 
   if (live.status === "active") return void import("./actions").then((module) => module[name](ctx, live.value))
@@ -575,7 +575,7 @@ const setup: MainSetup<typeof definition> = (ctx) => {
 export default setup
 ```
 
-4. **Write the window entry.** Pairing exists only on desktop, so setup returns at once on the web. The settings page is heavy, so it loads behind `lazy()` and compiles while the app idles; its search entries are indexed without mounting it. The page receives the desktop's own server, found through `ctx.servers` by `builtin`, and `ctx.uses.pairing`. The search entries for remote access and the display setting, like the settings themselves, exist only while main answers (see `main` under [Live and failure handling](#live-and-failure-handling)).
+4. **Write the window entry.** Pairing exists only on desktop, so setup returns at once on the web. The settings page is heavy, so it loads behind `lazy()` and compiles while the app idles; its search entries are indexed without mounting it. The page receives the desktop's own server, found through `ctx.servers` by `builtin`, and `ctx.uses.pairing`. The search entries for remote access and the display setting, like the settings themselves, exist only while main answers (see `main` under [Live and failure handling](#live-and-failure-handling)). Pages sit with the host's first group by default; add `placement: "end"` to give a page its own group at the end of the navigation, just before About.
 
 <!-- source: src/pairing/renderer.tsx -->
 
@@ -651,7 +651,7 @@ const setup: Setup<typeof definition> = (ctx) => {
 export default setup
 ```
 
-5. **Register it.** A built-in joins both lists, each composed with `Extension.compose`. The main list names every built-in, so their ids stay reserved, and adds pairing's main entry:
+5. **Register it.** A built-in joins both lists, each composed with `Extension.compose`. The main list names every built-in, so their ids stay reserved, and adds the main entries of pairing and the updater:
 
 <!-- source: src/main.ts#builtins -->
 
@@ -670,7 +670,7 @@ export const builtins = Extension.compose(
   details,
   { ...browser, main: () => import("./browser/main") },
   { ...pairing, main: () => import("./pairing/main") },
-  // Updater intentionally not composed: no update Ipc, no update checks, no update UI.
+  { ...updater, main: () => import("./updater/main") },
   { ...ssh, main: () => import("./ssh/main") },
   { ...wsl, main: () => import("./wsl/main") },
   microsoftOffice,
@@ -696,7 +696,7 @@ export const builtins = Extension.compose(
   { ...details, renderer: eager(detailsRenderer) },
   { ...browser, renderer: eager(browserRenderer) },
   { ...pairing, renderer: eager(pairingRenderer) },
-  // Updater intentionally not composed: this build never checks for or installs updates.
+  { ...updater, renderer: eager(updaterRenderer) },
   { ...ssh, renderer: eager(sshRenderer) },
   { ...wsl, renderer: eager(wslRenderer) },
   { ...microsoftOffice, renderer: eager(microsoftOfficeRenderer) },

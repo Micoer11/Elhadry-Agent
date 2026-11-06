@@ -1,15 +1,17 @@
 ﻿import { Schema } from "effect"
 import { Extension, Store } from "../sdk"
-import { Updater } from "./contract"
+import { AutoInstall, Updater } from "./contract"
 import en from "./i18n/en"
 
 const ReleaseNotes = Schema.Struct({ enabled: Schema.Boolean })
 
 const Seen = Schema.Struct({ version: Schema.optional(Schema.String) })
 
+const AutoInstallPreference = Schema.Struct({ enabled: Schema.Boolean })
+
 export default Extension.define({
   id: "updater",
-  provides: { updater: Updater },
+  provides: { updater: Updater, autoInstall: AutoInstall },
   stores: {
     // Whether What's New shows after an update; stored before in the app settings.
     releaseNotes: Store.global(
@@ -31,6 +33,8 @@ export default Extension.define({
       settings: "ready",
       file: "elhadry.updater",
     }),
+    // Whether a background check installs what it finds. Off until the user turns it on.
+    autoInstall: Store.main(AutoInstallPreference, { enabled: false }),
   },
   i18n: {
     en,

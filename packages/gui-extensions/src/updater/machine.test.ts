@@ -15,6 +15,8 @@ afterEach(async () => {
 async function setup(input?: {
   currentVersion?: string
   ready?: { version: string }
+  /** Whether a background check installs what it finds; off unless a test turns it on. */
+  autoInstall?: boolean
   /** The release each platform check finds, in order; the last one repeats. "offline" fails the check. */
   checks?: readonly string[]
   stage?: () => Promise<void>
@@ -27,6 +29,7 @@ async function setup(input?: {
   const calls: string[] = []
   const seen: UpdaterState[] = []
   const store = { ready: input?.ready }
+  const autoInstall = { enabled: input?.autoInstall ?? false }
   const checks = input?.checks ?? ["2.0.0"]
   const cursor = { check: 0 }
 
@@ -84,6 +87,7 @@ async function setup(input?: {
         store.ready = undefined
       }),
     },
+    autoInstall: () => autoInstall.enabled,
     changed: (state) => seen.push(state),
   }
 
@@ -97,6 +101,7 @@ async function setup(input?: {
     getReady: () => store.ready,
     state: updater.state,
     start: () => Effect.runPromise(updater.started),
+    startFork: () => Effect.runFork(updater.started),
     check: () => Effect.runPromise(updater.check),
     download: () => Effect.runPromise(updater.download),
     install: () => Effect.runPromise(updater.install),
@@ -243,6 +248,17 @@ describe("updater", () => {
     expect(app.calls).toEqual([...row.calls])
     expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
     expect(app.getReady()).toEqual({ version: "2.0.0" })
+  })
+
+  test("installs a release found on launch when automatic installation is on", async () => {
+    const app = await setup({ autoInstall: true })
+
+    app.startFork()
+    await tick()
+    await tick()
+
+    expect(app.calls).toEqual(["check", "download", "check", "prepare", "install:2.0.0"])
+    expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
   })
 
   test("a check while the download is in flight waits for it instead of downloading again", async () => {

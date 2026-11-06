@@ -32,3 +32,16 @@ export const Updater = Ipc.define({
     check: Schema.Null,
   },
 })
+
+/**
+ * Whether an update found by the background check is downloaded, installed and restarted without asking. Off until
+ * the user turns it on; the background check itself always runs.
+ */
+export const AutoInstall = Ipc.define({
+  id: "updater.auto-install",
+  state: Schema.Boolean,
+  methods: {
+    /** Turns automatic installation on or off and remembers the choice. */
+    set: { input: Schema.Boolean },
+  },
+})

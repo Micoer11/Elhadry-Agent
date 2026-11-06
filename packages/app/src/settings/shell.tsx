@@ -279,15 +279,20 @@ function RootSettings() {
       <DialogServer mode="add" onSave={(server) => surface.openServer(ServerConnection.key(server))} />
     ))
 
+  const extensionPages = createMemo(() =>
+    surface.extensions.pages().map((item) => ({
+      value: item.value.id,
+      icon: item.value.icon ?? pageIcons.extensions,
+      label: item.value.title,
+      placement: item.value.placement ?? ("main" as const),
+    })),
+  )
+
   const groups = createMemo<SettingsNavGroup[]>(() => [
     {
       items: [
         ...rootClientTabs.map((item) => ({ ...item, label: language.t(item.label) })),
-        ...surface.extensions.pages().map((item) => ({
-          value: item.value.id,
-          icon: item.value.icon ?? pageIcons.extensions,
-          label: item.value.title,
-        })),
+        ...extensionPages().filter((item) => item.placement === "main"),
       ],
     },
     ...(multiple()
@@ -319,6 +324,9 @@ function RootSettings() {
       ? [{ items: experimentalTab.map((item) => ({ ...item, label: language.t(item.label) })) }]
       : []),
     ...(guiExtensions ? [{ items: guiExtensionsTab.map((item) => ({ ...item, label: language.t(item.label) })) }] : []),
+    ...(extensionPages().some((item) => item.placement === "end")
+      ? [{ items: extensionPages().filter((item) => item.placement === "end") }]
+      : []),
     { items: aboutTab.map((item) => ({ ...item, label: language.t(item.label) })) },
   ])
 

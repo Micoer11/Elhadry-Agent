@@ -9,6 +9,7 @@ const setup: Setup<typeof definition> = (ctx) => {
 
   if (!ctx.desktop) return
   const updater = ctx.uses.updater
+  const autoInstall = ctx.uses.autoInstall
 
   const state = () => {
     const live = updater()
@@ -53,13 +54,16 @@ const setup: Setup<typeof definition> = (ctx) => {
 
   ctx.add(SettingsPage, {
     id: "updates",
-    page: "general",
+    placement: "end",
+    icon: "refresh",
     available: "desktop",
     get title() {
       return ctx.t("section.title")
     },
     get entries() {
       return [
+        { id: "settings-latest-release", title: ctx.t("latest.title"), description: ctx.t("latest.published") },
+        { id: "settings-auto-install", title: ctx.t("auto.title"), description: ctx.t("auto.description") },
         { id: "settings-release-notes", title: ctx.t("releaseNotes.title") },
         { id: "settings-check-updates", title: ctx.t("check.title") },
       ]
@@ -68,6 +72,7 @@ const setup: Setup<typeof definition> = (ctx) => {
       <Suspense>
         <Section
           state={state}
+          autoInstall={autoInstall}
           run={() => {
             const run = updaterAction(state()).run
 

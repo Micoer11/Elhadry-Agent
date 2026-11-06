@@ -23,6 +23,8 @@ export type Dependencies = {
     readonly set: (value: { version: string }) => Effect.Effect<void, unknown>
     readonly clear: Effect.Effect<void, unknown>
   }
+  /** Whether a background check installs what it finds. Read after each check, so the choice applies at once. */
+  readonly autoInstall: () => boolean
   readonly changed: (state: UpdaterState) => void
 }
 
@@ -282,12 +284,29 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
     yield* check
 
     if (staged && state.status === "available" && state.version === staged) yield* download
+    yield* autoInstallIfOptedIn
+  })
+
+  // Checks always run on launch and every 30 minutes. Only the installation is optional: a manual check reports the
+  // update, while a background check installs it when the user turned automatic installation on.
+  const autoInstallIfOptedIn = Effect.gen(function* () {
+    if (!dependencies.autoInstall()) return
+
+    if (state.status === "available") {
+      const staged = yield* download
+
+      if (staged.status !== "ready") return
+    }
+
+    if (state.status !== "ready") return
+    yield* install
   })
 
   const starting = yield* start.pipe(Effect.forkScoped)
   yield* Effect.gen(function* () {
     yield* Effect.sleep("30 minutes")
     yield* check
+    yield* autoInstallIfOptedIn
   }).pipe(Effect.forever, Effect.forkScoped)
 
   return {
