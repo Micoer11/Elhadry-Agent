@@ -183,6 +183,13 @@ const make = Effect.gen(function* () {
   )
   // WinGet extracts portable packages into a directory named after the package identifier.
   const installedWinget = /[\\/]winget[\\/]packages[\\/]elhadry\.agent_/i.test(executable)
+  // A release image can live anywhere the user put it, not only the installer's default directory.
+  // Package-managed installs are excluded here because they are upgraded through their package manager.
+  const installedStandalone =
+    !installedPackage &&
+    !installedFormula &&
+    !installedWinget &&
+    /^elhadry(?:[-\w.]*)?(?:\.exe)?$/i.test(path.basename(executable))
 
   const readPolicy = Effect.fnUntraced(function* () {
     const values = yield* Effect.forEach(["config.json", "elhadry.json", "elhadry.jsonc"], (name) =>
@@ -219,7 +226,7 @@ const make = Effect.gen(function* () {
   const curlBinary = yield* fs.realPath(curlPath).pipe(Effect.orElseSucceed(() => curlPath))
 
   const method = Effect.fnUntraced(function* () {
-    if (executable === curlBinary) return "curl"
+    if (executable === curlBinary || installedStandalone) return "curl"
     if (installedFormula) return "brew"
     if (installedWinget) return "winget"
     if (!installedPackage) return
@@ -468,7 +475,7 @@ const make = Effect.gen(function* () {
     // Only the installed binary is at stake; source checkouts run inside bun or node.
     const owned =
       method === "curl"
-        ? executable === curlBinary
+        ? installedStandalone || executable === curlBinary
         : method === "winget"
           ? installedWinget
           : installedPackage !== undefined
@@ -598,10 +605,13 @@ const make = Effect.gen(function* () {
           return yield* retaining(
             method,
             Effect.gen(function* () {
-              const replaced = yield* fs.remove(curlBinary).pipe(Effect.as(true), Effect.orElseSucceed(() => false))
-              if (!replaced) yield* fs.rename(curlBinary, `${curlBinary}.old`)
-              yield* fs.copy(image, curlBinary)
-              if (!replaced) yield* fs.remove(`${curlBinary}.old`).pipe(Effect.ignore)
+              // Replace the binary the user actually ran. An explicit `--method curl` from a source checkout
+              // targets the installer's default location instead of the Bun/Node image running this code.
+              const binary = installedStandalone ? executable : curlBinary
+              const replaced = yield* fs.remove(binary).pipe(Effect.as(true), Effect.orElseSucceed(() => false))
+              if (!replaced) yield* fs.rename(binary, `${binary}.old`)
+              yield* fs.copy(image, binary)
+              if (!replaced) yield* fs.remove(`${binary}.old`).pipe(Effect.ignore)
             }),
           )
         }
