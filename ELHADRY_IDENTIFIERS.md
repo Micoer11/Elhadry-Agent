@@ -24,11 +24,21 @@ migration and a compatibility alias.
   config aliases under `@opencode-ai/*` and `opencode.*`.
 - Plugin and MCP identifiers: `opencode.provider.*`, `opencode.config.*`,
   `opencode.notifications`, MCP server name `"opencode"`, the
-  `mcp__opencode__` tool prefix, and `ai.opencode/sessionID`.
+  `mcp__opencode__` tool prefix, `ai.opencode/sessionID`, the built-in tool IDs
+  `opencode.tool.*`, and the runtime keys `Symbol.for("opencode.plugin.v2.*")`
+  and `Symbol.for("opencode.extension.live")`. Tool IDs are written into
+  session history, so renaming them would orphan existing tool parts.
 - Storage and lock keys that must stay readable by existing installs, such as
-  `opencode.global.dat`, `opencode.settings`, `opencode.status`,
-  `.git/opencode-pack.lock`, and the `opencode` / `opencode2` theme keys (the
-  picker displays "Elhadry Agent" / "Elhadry Agent V2").
+  `opencode.global.dat`, `opencode.browser.dat`, `opencode.settings`,
+  `opencode.status`, `.git/opencode-pack.lock`, and the `opencode` /
+  `opencode2` theme keys (the picker displays "Elhadry Agent" /
+  "Elhadry Agent V2").
+- The GUI extension manifest schema literal `opencode.gui-extension/1`, which
+  is accepted alongside `elhadry.gui-extension/1` so existing manifests keep
+  loading.
+- Keybind names `opencode.settings`, `opencode.status`, `opencode.debug`,
+  `opencode.stats`, `opencode.highlights` and `opencode.update`. They are config
+  keys and internal command IDs, not product copy.
 - Public API symbols such as `OpenCode`, `OpenCodeEvent`, `OpenCodeClient`,
   `OpenCodeWorkerd`, `OpenCodeLogo`, and the `@elhadry/sdk/OpenCode` service
   tag. These are exported names, not product copy.
@@ -40,25 +50,34 @@ migration and a compatibility alias.
 - Historical records: `CHANGELOG.md`, license copyright lines, Claude Code
   replay fixtures, and third-party package names in prose.
 
-## Hosting identities still upstream
+## Hosting identities
 
-These point at real infrastructure and need new names plus a migration before
-they can change:
+The fork owns its source and release hosting; the upstream names below still
+appear where a real external contract requires them:
 
-- GitHub repository `anomalyco/opencode`, release fetches, `validGitHubClaims`
-  in `services/update/src/index.ts`, and the release workflows' repo claims.
-- Homebrew tap/formula (`anomalyco/tap/opencode`, `opencode-bin`,
-  `opencode-beta`, `opencode-desktop`), AUR `opencode-bin`, winget IDs, Scoop,
-  and the GHCR image.
-- Cloudflare zones (`opencode.ai`, `dev.opencode.ai`, `beta.opencode.ai`,
+- Source repository `Micoer11/Elhadry-Agent` (private). Binaries and the update
+  feed are mirrored to the public repository
+  `Micoer11/Elhadry-Agent-Releases`, which serves
+  `releases/latest/download/version.json`, `latest.yml`, the installers, and
+  their `.blockmap` files.
+- Homebrew tap `Micoer11/tap`, winget ID `Elhadry.Agent`, and the CLI release
+  manifest at
+  `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json`.
+  AUR, Scoop, and the GHCR image are not published by this fork.
+- Upstream Cloudflare zones (`opencode.ai`, `beta.opencode.ai`,
   `trust.opencode.ai`), R2 buckets `opencode-*-files`, Worker/D1 names, and the
-  `models.opencode.ai` model catalog endpoints.
-- The update service accepts both `update.elhadry.ai` and legacy
-  `update.opencode.ai` hostnames and both `elhadry/` and `opencode/`
-  User-Agent prefixes, so old clients keep updating.
+  `models.opencode.ai` model catalog. The `opencode` provider needs these
+  endpoints, so they stay until the provider itself is replaced.
+- Publishing a release needs `RELEASES_TOKEN` with `contents: write` on the
+  public releases repository. Replace the broad OAuth token with a fine-grained
+  PAT limited to that repository.
 
 ## Pending
 
 - Publish `@elhadry/pty@0.4.0`, then move the PTY packages and binary name with
   a compatibility alias.
-- Replace the console and desktop brand imagery with real Elhadry assets.
+- Add Linux and macOS build jobs, which also unblock WSL remote installs and
+  non-Windows `elhadry upgrade`.
+- Replace the console and desktop brand imagery with real Elhadry assets, and
+  point `packages/gui-extensions/src/wsl/remote-cli.ts` at a published Linux
+  CLI binary instead of the retired `elhadry.ai/v2/install` URL.
