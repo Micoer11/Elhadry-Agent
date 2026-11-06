@@ -15,6 +15,7 @@ import { OpenAIPlugin } from "@elhadry/core/plugin/provider/openai"
 import { PromptCacheKeyPlugin } from "@elhadry/core/plugin/provider/prompt-cache-key"
 import { XAIPlugin } from "@elhadry/core/plugin/provider/xai"
 import { Provider } from "@elhadry/core/provider"
+import { ProviderDiscovery } from "@elhadry/core/provider-discovery"
 import { withEnv } from "../fixture/env"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "../plugin/fixture"
@@ -437,6 +438,68 @@ describe("ConfigProviderPlugin.Plugin", () => {
       ])
 
       const model = required(yield* models.get(customID, modelID))
+      expect(model.variants.map((variant) => variant.id)).toEqual([
+        Model.VariantID.make("none"),
+        Model.VariantID.make("high"),
+      ])
+      expect(model.capabilities).toEqual({
+        tools: true,
+        input: ["text", "image"],
+        output: ["text"],
+        temperature: true,
+      })
+      expect(model.limit).toEqual({ context: 1_000_000, output: 131_072 })
+    }),
+  )
+
+  it.effect("takes real reasoning levels from a custom provider's own model list", () =>
+    Effect.gen(function* () {
+      const models = yield* Model.Service
+      const providerID = Provider.ID.make("free")
+      const modelID = Model.ID.make("nvidia/nemotron-3.5-super-vl:free")
+      const server = yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          Bun.serve({
+            port: 0,
+            fetch: () =>
+              Response.json({
+                data: [
+                  {
+                    id: "nvidia/nemotron-3.5-super-vl:free",
+                    architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
+                    top_provider: { context_length: 1_000_000, max_completion_tokens: 131_072 },
+                    supported_parameters: ["tools", "temperature"],
+                    opencode: {
+                      variants: {
+                        instant: { reasoning: { enabled: false, effort: "none" } },
+                        thinking: { reasoning: { enabled: true, effort: "high" } },
+                      },
+                    },
+                  },
+                ],
+              }),
+          }),
+        ),
+        (server) => Effect.promise(() => server.stop()),
+      )
+      const baseURL = `http://127.0.0.1:${server.port}/v1`
+      yield* ProviderDiscovery.refresh({ baseURL })
+      yield* addPlugin([
+        new Document({
+          type: "document",
+          info: decode({
+            providers: {
+              free: {
+                package: "aisdk:@ai-sdk/openai-compatible",
+                settings: { baseURL },
+                models: { "nvidia/nemotron-3.5-super-vl:free": { capabilities: { tools: true } } },
+              },
+            },
+          }),
+        }),
+      ])
+
+      const model = required(yield* models.get(providerID, modelID))
       expect(model.variants.map((variant) => variant.id)).toEqual([
         Model.VariantID.make("none"),
         Model.VariantID.make("high"),

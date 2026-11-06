@@ -93,6 +93,7 @@ function ComposerStory(props: {
       list: () => ["balanced", "high"],
       set: (variant: string | undefined) => setStory("variant", variant ?? "balanced"),
       cycle() {},
+      refresh: async () => {},
     },
   } satisfies ModelSelection
 

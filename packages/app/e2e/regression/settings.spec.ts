@@ -744,7 +744,7 @@ for (const row of [
         all: [
           {
             id: "opencode",
-            name: "Elhadry Zen",
+            name: "OpenCode Zen",
             models: {
               "claude-sonnet-4-6": {
                 id: "claude-sonnet-4-6",
@@ -760,14 +760,14 @@ for (const row of [
       integrations: [
         {
           id: "opencode",
-          name: "Elhadry Console",
+          name: "OpenCode Console",
           methods: [
-            { id: "device", type: "oauth", label: "Elhadry Console account" },
+            { id: "device", type: "oauth", label: "OpenCode Console account" },
             { type: "key", label: "API key (service account)" },
           ],
           connections: row.connections,
         },
-        { id: "opencode-go", name: "Elhadry Agent Go", methods: [{ type: "key" }], connections: [] },
+        { id: "opencode-go", name: "OpenCode Go", methods: [{ type: "key" }], connections: [] },
         { id: "anthropic", name: "Anthropic", methods: [{ type: "key" }], connections: [] },
       ],
     })
@@ -776,31 +776,31 @@ for (const row of [
     await expect(settings.getByRole("heading", { name: "Popular providers" })).toBeVisible()
     const connected = settings.locator('[data-component="connected-providers-section"]')
 
-    if (row.paid) await expect(connected.getByText("Elhadry Zen", { exact: true })).toBeVisible()
+    if (row.paid) await expect(connected.getByText("OpenCode Zen", { exact: true })).toBeVisible()
 
     if (!row.paid) await expect(settings.getByText("No connected providers")).toBeVisible()
     // Anthropic only exists in the integration fixture, so its row proves the integration list has loaded.
     await expect(settings.getByText("Anthropic", { exact: true })).toBeVisible()
-    await expect(settings.getByText("Elhadry Console", { exact: true })).toHaveCount(row.console ? 1 : 0)
+    await expect(settings.getByText("OpenCode Console", { exact: true })).toHaveCount(row.console ? 1 : 0)
   })
 }
 
 const consoleIntegrations = [
   {
     id: "opencode",
-    name: "Elhadry Console",
+    name: "OpenCode Console",
     methods: [
-      { id: "device", type: "oauth", label: "Elhadry Console account" },
+      { id: "device", type: "oauth", label: "OpenCode Console account" },
       { type: "key", label: "API key (service account)" },
     ],
     connections: [],
   },
-  { id: "opencode-go", name: "Elhadry Agent Go", methods: [{ type: "key" }], connections: [] },
+  { id: "opencode-go", name: "OpenCode Go", methods: [{ type: "key" }], connections: [] },
 ]
 
 for (const row of [
-  { provider: "Elhadry Console", connect: "Connect Elhadry Console", signIn: "Connecting to Elhadry Console" },
-  { provider: "Elhadry Agent Go", connect: "Connect Elhadry Agent Go", signIn: "Connecting to Elhadry Agent Go" },
+  { provider: "OpenCode Console", connect: "Connect OpenCode Console", signIn: "Connecting to OpenCode Console" },
+  { provider: "OpenCode Go", connect: "Connect OpenCode Go", signIn: "Connecting to OpenCode Go" },
 ]) {
   test(`providers: ${row.provider} signs in from the Console intro`, async ({ page, context }) => {
     const url = "https://auth.example.test/device?user_code=ABCD-EFGH"
@@ -820,7 +820,7 @@ for (const row of [
     const intro = page.getByRole("dialog", { name: row.connect, exact: true })
     const container = page.locator('[data-slot="dialog-container"]')
     await expect(
-      intro.getByText("Sign in with your Elhadry Console account to use the available models."),
+      intro.getByText("Sign in with your OpenCode Console account to use the available models."),
     ).toBeVisible()
     await expect(intro.getByRole("button", { name: "Use API key", exact: true })).toBeVisible()
     expect((await container.boundingBox())?.height).toBe(512)
@@ -934,7 +934,7 @@ test("providers: adding a Go account uses a Go key, and a lone sign-in starts on
       ...consoleIntegrations.filter((integration) => integration.id !== "opencode-go"),
       {
         id: "opencode-go",
-        name: "Elhadry Agent Go",
+        name: "OpenCode Go",
         methods: [{ type: "key" }],
         connections: [{ type: "credential", id: "cred_go", label: "Go key", method: "key" }],
       },
@@ -1060,7 +1060,7 @@ test("providers: switching to a Zen API key does not wait for a Console workspac
             all: [
               {
                 id: "opencode",
-                name: "Elhadry Zen",
+                name: "OpenCode Zen",
                 models: { paid: { id: "paid", name: "Paid", cost: { input: 3 } } },
               },
             ],
@@ -1070,8 +1070,8 @@ test("providers: switching to a Zen API key does not wait for a Console workspac
     integrations: () => [
       {
         id: "opencode",
-        name: "Elhadry Console",
-        methods: [{ id: "device", type: "oauth", label: "Elhadry Console account" }],
+        name: "OpenCode Console",
+        methods: [{ id: "device", type: "oauth", label: "OpenCode Console account" }],
         connections: accounts.toSorted((a, b) => Number(b.id === state.active) - Number(a.id === state.active)),
       },
     ],
@@ -1081,7 +1081,7 @@ test("providers: switching to a Zen API key does not wait for a Console workspac
   })
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  const trigger = settings.getByRole("button", { name: "Manage Elhadry Console accounts", exact: true })
+  const trigger = settings.getByRole("button", { name: "Manage OpenCode Console accounts", exact: true })
   await expect(trigger).toHaveText("Anomaly")
   await trigger.click()
 
@@ -1092,12 +1092,12 @@ test("providers: switching to a Zen API key does not wait for a Console workspac
       catalogReads.push(request.url())
   })
   await page.getByRole("menuitemradio", { name: "Zen key", exact: true }).click()
-  await expect(page.getByText("Elhadry Console account switched")).toBeVisible()
+  await expect(page.getByText("OpenCode Console account switched")).toBeVisible()
   // One refresh after the switch; a Console workspace poll would keep reading the catalog.
   expect(catalogReads).toHaveLength(1)
 })
 
-test("providers: connecting Elhadry Agent Go keeps the Console row in place", async ({ page, context }) => {
+test("providers: connecting OpenCode Go keeps the Console row in place", async ({ page, context }) => {
   await context.route("https://auth.example.test/**", (route) => route.fulfill({ body: "Sign in" }))
 
   // After the sign-in the server reloads the workspace, briefly serving only the free catalog.
@@ -1122,7 +1122,7 @@ test("providers: connecting Elhadry Agent Go keeps the Console row in place", as
     if (!state.authorized) return workspace
 
     return {
-      all: [...workspace.all, { id: "opencode-go", integrationID: "opencode-go", name: "Elhadry Agent Go", models: {} }],
+      all: [...workspace.all, { id: "opencode-go", integrationID: "opencode-go", name: "OpenCode Go", models: {} }],
       connected: [...workspace.connected, "opencode-go"],
       default: {},
     }
@@ -1133,13 +1133,13 @@ test("providers: connecting Elhadry Agent Go keeps the Console row in place", as
     integrations: () => [
       {
         id: "opencode",
-        name: "Elhadry Console",
-        methods: [{ id: "device", type: "oauth", label: "Elhadry Console account" }],
+        name: "OpenCode Console",
+        methods: [{ id: "device", type: "oauth", label: "OpenCode Console account" }],
         connections: [{ type: "credential", id: "cred_console", label: "Anomaly", method: "oauth" }],
       },
       {
         id: "opencode-go",
-        name: "Elhadry Agent Go",
+        name: "OpenCode Go",
         methods: [{ type: "key" }],
         connections: state.authorized ? [{ type: "credential", id: "cred_go", label: "Anomaly", method: "oauth" }] : [],
       },
@@ -1157,25 +1157,25 @@ test("providers: connecting Elhadry Agent Go keeps the Console row in place", as
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
   const connected = settings.locator('[data-component="connected-providers-section"]')
-  await expect(connected.getByText("Elhadry Console", { exact: true })).toBeVisible()
+  await expect(connected.getByText("OpenCode Console", { exact: true })).toBeVisible()
   await connected.evaluate((element) => {
     new MutationObserver(() => {
-      if (!element.textContent?.includes("Elhadry Console")) element.dataset.flashed = ""
+      if (!element.textContent?.includes("OpenCode Console")) element.dataset.flashed = ""
     }).observe(element, { childList: true, subtree: true, characterData: true })
   })
 
   await settings
-    .locator(".settings-provider-row", { hasText: "Elhadry Agent Go" })
+    .locator(".settings-provider-row", { hasText: "OpenCode Go" })
     .getByRole("button", { name: "Connect", exact: true })
     .click()
   const popup = page.waitForEvent("popup")
   await page.getByRole("button", { name: "Continue in the browser", exact: true }).click()
   await popup
-  await expect(page.getByText("Elhadry Agent Go connected", { exact: true })).toBeVisible()
+  await expect(page.getByText("OpenCode Go connected", { exact: true })).toBeVisible()
   await expect(page.getByRole("dialog")).toHaveCount(0)
 
-  await expect(connected.getByText("Elhadry Agent Go", { exact: true })).toBeVisible()
-  await expect(connected.getByText("Elhadry Console", { exact: true })).toBeVisible()
+  await expect(connected.getByText("OpenCode Go", { exact: true })).toBeVisible()
+  await expect(connected.getByText("OpenCode Console", { exact: true })).toBeVisible()
   await expect(connected).not.toHaveAttribute("data-flashed")
 })
 
@@ -1215,8 +1215,8 @@ test("providers: switching Console accounts keeps the list until the new workspa
     integrations: () => [
       {
         id: "opencode",
-        name: "Elhadry Console",
-        methods: [{ id: "device", type: "oauth", label: "Elhadry Console account" }],
+        name: "OpenCode Console",
+        methods: [{ id: "device", type: "oauth", label: "OpenCode Console account" }],
         connections: accounts.toSorted((a, b) => Number(b.id === state.active) - Number(a.id === state.active)),
       },
     ],
@@ -1228,7 +1228,7 @@ test("providers: switching Console accounts keeps the list until the new workspa
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
   const connected = settings.locator('[data-component="connected-providers-section"]')
-  const trigger = connected.getByRole("button", { name: "Manage Elhadry Console accounts", exact: true })
+  const trigger = connected.getByRole("button", { name: "Manage OpenCode Console accounts", exact: true })
   await expect(trigger).toHaveText("Clara")
   await connected.evaluate((element) => {
     new MutationObserver(() => {
@@ -1238,7 +1238,7 @@ test("providers: switching Console accounts keeps the list until the new workspa
 
   await trigger.click()
   await page.getByRole("menuitemradio", { name: "Anomaly", exact: true }).click()
-  await expect(page.getByText("Elhadry Console account switched")).toBeVisible()
+  await expect(page.getByText("OpenCode Console account switched")).toBeVisible()
   await expect(trigger).toHaveText("Anomaly")
   await expect(connected).not.toHaveAttribute("data-flashed")
 })

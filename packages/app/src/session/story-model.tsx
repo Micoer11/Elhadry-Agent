@@ -72,6 +72,7 @@ const modelSelection = {
     list: () => [STORY_MODEL.variant],
     set() {},
     cycle() {},
+    refresh: async () => {},
   },
 } satisfies ModelSelection
 

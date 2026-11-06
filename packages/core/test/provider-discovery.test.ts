@@ -70,6 +70,28 @@ test("reads real reasoning controls, capabilities, and limits from a rich model 
   }
 })
 
+test("reuses a fresh discovery result instead of asking the same endpoint again", async () => {
+  let requests = 0
+  const server = Bun.serve({
+    port: 0,
+    fetch: () => {
+      requests += 1
+      return Response.json({
+        data: [{ id: "chat", opencode: { reasoning_options: [{ type: "effort", values: ["low", "high"] }] } }],
+      })
+    },
+  })
+  try {
+    const baseURL = `http://127.0.0.1:${server.port}/v1`
+    expect(await Effect.runPromise(ProviderDiscovery.refresh({ baseURL }))).toBe(true)
+    expect(ProviderDiscovery.cached(`${baseURL}/`)?.map((model) => model.id)).toEqual(["chat"])
+    expect(await Effect.runPromise(ProviderDiscovery.refresh({ baseURL }))).toBe(false)
+    expect(requests).toBe(1)
+  } finally {
+    await server.stop()
+  }
+})
+
 test("adds no metadata when the server only returns ids", async () => {
   const server = Bun.serve({
     port: 0,

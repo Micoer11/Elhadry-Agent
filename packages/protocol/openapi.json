@@ -16933,7 +16933,7 @@
             }
           }
         },
-        "description": "Return the Elhadry Agent Go allowance and Console budgets of the Elhadry Console workspace the location is signed in to, or null when it isn't signed in.",
+        "description": "Return the OpenCode Go allowance and Console budgets of the OpenCode Console workspace the location is signed in to, or null when it isn't signed in.",
         "summary": "Get usage limits"
       }
     },

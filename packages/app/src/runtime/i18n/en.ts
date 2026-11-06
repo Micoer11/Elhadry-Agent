@@ -35,7 +35,7 @@ export const dict = {
   "command.project.open": "Open project",
   "command.project.copyID": "Copy Project ID",
   "command.provider.connect": "Connect provider",
-  "command.provider.connect.description": "Sign in to Elhadry Agent Go, Elhadry Console, or another model provider",
+  "command.provider.connect.description": "Sign in to OpenCode Go, OpenCode Console, or another model provider",
   "command.settings.open": "Open settings",
   "command.session.location.cycle": "Cycle session location",
 
@@ -130,10 +130,11 @@ export const dict = {
   "dialog.model.empty": "No model results",
   "dialog.model.manage": "Manage models",
   "dialog.model.manage.description": "Customize which models appear in the model selector.",
+  "dialog.model.effort.loading": "Loading effort levels…",
   "dialog.model.chatgptPlan": "Using ChatGPT plan",
   "dialog.model.chatgptManageUsage": "Manage usage",
 
-  "dialog.model.unpaid.freeModels.title": "Free models provided by Elhadry Agent",
+  "dialog.model.unpaid.freeModels.title": "Free models provided by OpenCode",
   "dialog.model.unpaid.addMore.title": "Add more models from popular providers",
   "dialog.model.unpaid.viewMoreProviders": "See 70+ more providers",
 
@@ -147,15 +148,15 @@ export const dict = {
   "dialog.provider.accounts.options": "{{account}} options",
 
   "provider.connect.title": "Connect {{provider}}",
-  "provider.connect.opencode.name": "Elhadry Console",
-  "provider.connect.opencode.freeName": "Elhadry Free",
-  "provider.connect.opencode.errorTitle": "Connect to Elhadry Agent",
-  "provider.connect.console.title": "Connecting to Elhadry Console",
-  "provider.connect.console.titleGo": "Connecting to Elhadry Agent Go",
-  "provider.connect.console.intro": "Sign in with your Elhadry Console account to use the available models.",
+  "provider.connect.opencode.name": "OpenCode Console",
+  "provider.connect.opencode.freeName": "OpenCode Free",
+  "provider.connect.opencode.errorTitle": "Connect to OpenCode",
+  "provider.connect.console.title": "Connecting to OpenCode Console",
+  "provider.connect.console.titleGo": "Connecting to OpenCode Go",
+  "provider.connect.console.intro": "Sign in with your OpenCode Console account to use the available models.",
   "provider.connect.console.continue": "Continue in the browser",
   "provider.connect.console.retry": "Try again",
-  "provider.connect.console.serviceKeyDescription": "Connect using a service-account API key from Elhadry Console.",
+  "provider.connect.console.serviceKeyDescription": "Connect using a service-account API key from OpenCode Console.",
   "provider.connect.console.instructions":
     "Continue in your browser. Confirm the code shown there matches the one below.",
   "provider.connect.console.deviceCode": "Device code",
@@ -186,7 +187,7 @@ export const dict = {
   "provider.connect.chatgptUsageLimit.close": "Close",
   "provider.connect.console.refreshFailed":
     "Your account is connected, but we couldn't load your models. Try again to refresh them.",
-  "provider.connect.console.connected": "Elhadry Agent connected",
+  "provider.connect.console.connected": "OpenCode connected",
   "provider.connect.console.noModels":
     "Your account is connected, but this Console workspace has no available models. Check its setup in Console, then refresh.",
   "provider.connect.console.modelsLoading": "Your models are still loading. Refresh to check again.",

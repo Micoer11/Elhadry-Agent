@@ -36,6 +36,7 @@ const selection = {
     list: () => ["balanced"],
     set() {},
     cycle() {},
+    refresh: async () => {},
   },
 } satisfies ModelSelection
 

@@ -48,7 +48,7 @@ export const layer = Layer.effect(
       ).pipe(
         Effect.timeoutOrElse({
           duration: Duration.seconds(15),
-          orElse: () => Effect.fail(new UnavailableError({ message: "Elhadry Console usage limits timed out" })),
+          orElse: () => Effect.fail(new UnavailableError({ message: "OpenCode Console usage limits timed out" })),
         }),
       )
       return {
@@ -144,7 +144,7 @@ function readBudgets(http: HttpClient.HttpClient, server: string, credential: Cr
       ),
       Effect.scoped,
       Effect.mapError(
-        (error) => new UnavailableError({ message: `Elhadry Console budgets are unavailable: ${error.message}` }),
+        (error) => new UnavailableError({ message: `OpenCode Console budgets are unavailable: ${error.message}` }),
       ),
     )
 }
@@ -182,7 +182,7 @@ function readGo(
       ),
       Effect.scoped,
       Effect.mapError(
-        (error) => new UnavailableError({ message: `Elhadry Agent Go usage is unavailable: ${error.message}` }),
+        (error) => new UnavailableError({ message: `OpenCode Go usage is unavailable: ${error.message}` }),
       ),
     )
 }

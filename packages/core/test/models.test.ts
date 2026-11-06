@@ -496,6 +496,41 @@ describe("ModelsDev Service", () => {
     }),
   )
 
+  it.effect("resolves upstream package scopes to this build's entrypoints", () =>
+    Effect.gen(function* () {
+      const [acme] = yield* ModelsDev.decodeSnapshot(
+        JSON.stringify({
+          acme: {
+            ...fixture.acme,
+            models: {
+              reasoner: sourceModel("reasoner", {
+                capabilities: {
+                  tools: { supported: true },
+                  reasoning: { supported: true, effort: ["low", "high"] },
+                  temperature: true,
+                },
+                api: {
+                  "chat-completions": {
+                    base_url: "https://api.acme.test/v1",
+                    sdk: {
+                      aisdk: "@ai-sdk/openai-compatible",
+                      opencodeai: "@opencode/ai/providers/openai-compatible",
+                    },
+                  },
+                },
+              }),
+            },
+          },
+        }),
+      )
+      expect(acme?.info.package).toBe("@elhadry/ai/providers/openai-compatible")
+      expect(acme?.models[0]?.variants.map((variant) => variant.id)).toEqual([
+        Model.VariantID.make("low"),
+        Model.VariantID.make("high"),
+      ])
+    }),
+  )
+
   it.effect("skips non-chat models whose only opencode package serves another type", () =>
     Effect.gen(function* () {
       const api = (opencodeai: string) => ({

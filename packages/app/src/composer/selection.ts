@@ -46,6 +46,7 @@ export function createComposerModelSelection(input: {
   const local = useLocal()
   const prompt = useComposerState()
   const configuredModel = useConfiguredModel()
+  const data = useData()
   const [remembered, setRemembered] = createStore<Record<string, ModelKey | undefined>>({})
   createEffect(
     on(
@@ -190,6 +191,13 @@ export function createComposerModelSelection(input: {
           prompt.model.set({ providerID: model.provider.id, modelID: model.id, variant: value ?? null })
           models.variant.set({ providerID: model.provider.id, modelID: model.id }, value)
         })
+      },
+      // A configured model can lack its provider's reasoning levels until the server reads the provider's
+      // `/models` answer. Reloading the model list runs that discovery and brings the real levels back.
+      async refresh() {
+        const ref = { directory: sdk().directory }
+        data.location.model.invalidate(ref)
+        await data.location.model.sync(ref)
       },
       cycle() {
         const variants = this.list()

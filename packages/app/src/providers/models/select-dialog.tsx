@@ -306,6 +306,7 @@ export function ModelSelectorPopover(props: {
           variant={() => props.model?.variant.current()}
           variants={() => props.model?.variant.list() ?? []}
           onVariant={(value) => props.model?.variant.set(value)}
+          refresh={() => props.model?.variant.refresh()}
           optionTooltip={(item) => <ModelTooltip model={item} latest={item.latest} free={isFreeModel(item)} v2 />}
           providerIcon={(group) => <ProviderModelIcon provider={group.items[0].provider} class="shrink-0" />}
           providerLabel={(group) => {

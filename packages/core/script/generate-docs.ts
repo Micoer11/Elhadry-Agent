@@ -60,8 +60,9 @@ function renameProduct(text: string) {
     .map((part) => {
       if (part.startsWith("`")) return part
       return part
-        .replace(/\bOpenCode Console\b/g, "Elhadry Console")
+        .replace(/\bOpenCode Console\b/g, "\u0000CONSOLE\u0000")
         .replace(/\bOpenCode\b/g, "Elhadry Agent")
+        .replace(/\u0000CONSOLE\u0000/g, "OpenCode Console")
     })
     .join("")
 }

@@ -169,11 +169,10 @@ const BUILDS_OWN_URL = new Set([
   "aisdk:watsonx-ai-provider",
 ])
 
-// The upstream catalog still names the two first-party providers "OpenCode"; every surface shows the
-// Elhadry product names instead.
+// These two providers serve OpenCode's own models, so every surface shows their OpenCode names.
 const PRODUCT_PROVIDER_NAMES: Record<string, string> = {
-  opencode: "Elhadry Zen",
-  "opencode-go": "Elhadry Agent Go",
+  opencode: "OpenCode Zen",
+  "opencode-go": "OpenCode Go",
 }
 
 const providerName = (id: string, name: string) => PRODUCT_PROVIDER_NAMES[id] ?? name
@@ -287,11 +286,16 @@ function route(providerID: Provider.ID, model: SourceModel, unknown: Set<string>
 }
 
 // Newer catalogs may name @elhadry/ai entrypoints that older builds don't ship, so those count as no package.
+// The catalog still publishes the upstream `@opencode/ai` scope, so every native entrypoint is normalized before it
+// is used: variants resolve by package name, and an unnormalized package loses the model's real reasoning levels.
 function loadable(opencodeai: string | undefined, unknown: Set<string>) {
   const name = Provider.packageName(opencodeai)
-  if (!name?.startsWith("@elhadry/ai/") || Provider.builtinPackages.has(name)) return opencodeai
-  unknown.add(name)
-  return undefined
+  if (!name?.startsWith("@elhadry/ai/")) return opencodeai
+  if (!Provider.builtinPackages.has(name)) {
+    unknown.add(name)
+    return undefined
+  }
+  return name
 }
 
 function mostCommon<T>(values: readonly T[]) {

@@ -153,7 +153,7 @@ const sessionAccess = (provider: string, credential: Credential.Value) => {
 }
 
 const missingLiveKeyMessage =
-  "GPT-Live needs an OpenAI API key (a stored key or OPENAI_API_KEY) or an Elhadry Console connection on the server. ChatGPT sign-in can't start voice sessions."
+  "GPT-Live needs an OpenAI API key (a stored key or OPENAI_API_KEY) or an OpenCode Console connection on the server. ChatGPT sign-in can't start voice sessions."
 
 const missingKeyMessage = {
   openai:

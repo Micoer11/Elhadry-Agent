@@ -11,6 +11,7 @@ import { AISDKNative } from "../../aisdk-native.js"
 import { Config } from "../../config.js"
 import { Model } from "../../model.js"
 import { Provider } from "../../provider.js"
+import { ProviderDiscovery } from "../../provider-discovery.js"
 import { Variant } from "../../variant.js"
 import { ConfigIntegration } from "../integration.js"
 import { ConfigEntryObserver } from "./entry-observer.js"
@@ -140,31 +141,74 @@ export const Plugin = define({
           // A server that advertises no reasoning must not inherit a guessed low/medium/high ladder. The
           // catalog has the real levels for providers it knows, matched by endpoint and model id.
           const catalog = catalogModel(models, providerID, provider?.settings?.baseURL, config.modelID ?? id)
+          // A custom provider's own `/models` response has the levels for models the catalog does not know.
+          const listed = ProviderDiscovery.cached(provider?.settings?.baseURL)?.find(
+            (model) => model.id === (config.modelID ?? id),
+          )
+          // The server describes the exact model behind this endpoint. A catalog entry for the same id can exist
+          // without any reasoning levels, so discovered levels win and the catalog only fills the rest.
+          const discovered = listed?.reasoning ? Variant.supports(listed.reasoning) : undefined
           models.update(providerID, id, (model) => {
-            if (!catalog) return
-            const packageName = model.package ?? provider?.package
-            const sameProtocol =
-              protocol(packageName, providerID, model.modelID) ===
-              protocol(catalog.package, providerID, catalog.model.modelID)
-            if (sameProtocol)
-              model.variants = catalog.model.variants.map((variant) => ({ ...structuredClone(variant) }))
-            model.capabilities = {
-              ...model.capabilities,
-              ...(config.capabilities?.tools === undefined ? { tools: catalog.model.capabilities.tools } : {}),
-              ...(config.capabilities?.input === undefined ? { input: [...catalog.model.capabilities.input] } : {}),
-              ...(config.capabilities?.output === undefined ? { output: [...catalog.model.capabilities.output] } : {}),
-              ...(config.capabilities?.temperature === undefined &&
-              catalog.model.capabilities.temperature !== undefined
-                ? { temperature: catalog.model.capabilities.temperature }
-                : {}),
+            const applyDiscovered = () => {
+              if (!listed || discovered === undefined) return false
+              model.variants = [
+                ...Variant.resolve({ ...model, package: model.package ?? provider?.package }, discovered),
+              ]
+              return true
             }
-            model.limit = {
-              context: config.limit?.context ?? catalog.model.limit.context,
-              ...((config.limit?.input ?? catalog.model.limit.input) === undefined
-                ? {}
-                : { input: config.limit?.input ?? catalog.model.limit.input }),
-              output: config.limit?.output ?? catalog.model.limit.output,
+            if (catalog) {
+              const packageName = model.package ?? provider?.package
+              const sameProtocol =
+                protocol(packageName, providerID, model.modelID) ===
+                protocol(catalog.package, providerID, catalog.model.modelID)
+              if (!applyDiscovered() && sameProtocol)
+                model.variants = catalog.model.variants.map((variant) => ({ ...structuredClone(variant) }))
+              model.capabilities = {
+                ...model.capabilities,
+                ...(config.capabilities?.tools === undefined ? { tools: catalog.model.capabilities.tools } : {}),
+                ...(config.capabilities?.input === undefined ? { input: [...catalog.model.capabilities.input] } : {}),
+                ...(config.capabilities?.output === undefined ? { output: [...catalog.model.capabilities.output] } : {}),
+                ...(config.capabilities?.temperature === undefined &&
+                catalog.model.capabilities.temperature !== undefined
+                  ? { temperature: catalog.model.capabilities.temperature }
+                  : {}),
+              }
+              model.limit = {
+                context: config.limit?.context ?? catalog.model.limit.context,
+                ...((config.limit?.input ?? catalog.model.limit.input) === undefined
+                  ? {}
+                  : { input: config.limit?.input ?? catalog.model.limit.input }),
+                output: config.limit?.output ?? catalog.model.limit.output,
+              }
+              return
             }
+            if (!listed) return
+            // Only the levels the server advertises: no configured reasoning means the server's own answer.
+            applyDiscovered()
+            if (listed.capabilities)
+              model.capabilities = {
+                ...model.capabilities,
+                ...(config.capabilities?.tools === undefined && listed.capabilities.tools !== undefined
+                  ? { tools: listed.capabilities.tools }
+                  : {}),
+                ...(config.capabilities?.input === undefined && listed.capabilities.input
+                  ? { input: [...listed.capabilities.input] }
+                  : {}),
+                ...(config.capabilities?.output === undefined && listed.capabilities.output
+                  ? { output: [...listed.capabilities.output] }
+                  : {}),
+                ...(config.capabilities?.temperature === undefined && listed.capabilities.temperature !== undefined
+                  ? { temperature: listed.capabilities.temperature }
+                  : {}),
+              }
+            if (listed.limit)
+              model.limit = {
+                context: config.limit?.context ?? listed.limit.context ?? model.limit.context,
+                ...((config.limit?.input ?? listed.limit.input) === undefined
+                  ? {}
+                  : { input: config.limit?.input ?? listed.limit.input }),
+                output: config.limit?.output ?? listed.limit.output ?? model.limit.output,
+              }
           })
         }
       }

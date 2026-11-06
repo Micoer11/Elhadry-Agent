@@ -24,7 +24,7 @@ type Polling = {
   attempt?: Authorization
 }
 
-// Elhadry Agent Go and Elhadry Zen both bill through the Elhadry Console, so the
+// OpenCode Go and OpenCode Zen both bill through the OpenCode Console, so the
 // Console sign-in is the connection method for both providers.
 export const CONSOLE_INTEGRATION = "opencode"
 
@@ -288,12 +288,15 @@ export function createProviderConnectionController(options: {
     const result = await serverSDK.api.integration
       .get({ integrationID: options.provider(), location: location() })
       .catch(() => undefined)
+
     const connections = result?.data.connections ?? []
+
     const credential =
       connections.find((connection) => connection.type === "credential" && connection.method === "external") ??
       connections.find((connection) => connection.type === "credential")
 
     if (!credential || credential.type !== "credential") return
+
     return { credentialID: credential.id, status: credential.status }
   }
 
@@ -331,7 +334,9 @@ export function createProviderConnectionController(options: {
 
   const recheckExternal = async () => {
     const credentialID = store.external?.credentialID
+
     if (store.methodIndex === undefined) return
+
     // The server only re-checks a connection when a new credential activates, so replace the saved one.
     if (credentialID)
       await serverSDK.api.credential.remove({ credentialID }).catch(() => undefined)

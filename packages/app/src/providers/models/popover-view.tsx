@@ -3,6 +3,7 @@ import { createStore } from "solid-js/store"
 import { Badge } from "@elhadry/ui/badge"
 import { Icon } from "@elhadry/ui/icon"
 import { Menu } from "@elhadry/ui/menu"
+import { Spinner } from "@elhadry/ui/spinner"
 import { Tooltip } from "@elhadry/ui/tooltip"
 import { useLanguage } from "@/runtime/i18n/language"
 import { ProviderModelIcon } from "./provider-group"
@@ -45,17 +46,21 @@ export const ModelSelectorPopoverView: Component<{
   variant?: () => string | undefined
   variants?: () => string[]
   onVariant?: (value: string | undefined) => void
+  refresh?: () => Promise<void> | void
   optionTooltip?: (item: ModelItem) => JSX.Element
   providerIcon?: (group: { category: string; items: ModelItem[] }) => JSX.Element
   providerLabel?: (group: { category: string; items: ModelItem[] }) => string
 }> = (props) => {
   const language = useLanguage()
-  const [store, setStore] = createStore<{ open: boolean; view: View; search: string; active: string }>({
+
+  const [store, setStore] = createStore<{ open: boolean; view: View; search: string; active: string; loading: boolean }>({
     open: false,
     view: "root",
     search: "",
     active: "",
+    loading: false,
   })
+
   let searchRef: HTMLInputElement | undefined
   let contentRef: HTMLDivElement | undefined
   const dismiss = createMenuDismissController(() => contentRef)
@@ -66,10 +71,11 @@ export const ModelSelectorPopoverView: Component<{
   const effort = () => props.variant?.()
   const effortOptions = () => ["default", ...(props.variants?.() ?? [])]
   const keys = () => [...models().map(modelKey), manageKey]
+  const width = () => ({ root: "w-[224px]", model: "w-[264px]", effort: "w-[160px]" })[store.view]
 
   const close = (after?: () => void) => {
     dismiss.preventTriggerRestore()
-    setStore({ open: false, view: "root", search: "", active: "" })
+    setStore({ open: false, view: "root", search: "", active: "", loading: false })
     dismiss.afterClose(() => {
       after?.()
       props.onClose()
@@ -94,22 +100,29 @@ export const ModelSelectorPopoverView: Component<{
         view,
         search: "",
         active: selected() ? modelKey(selected()!) : models()[0] ? modelKey(models()[0]) : manageKey,
+        loading: false,
       })
-    else setStore({ view, active: "" })
+    else setStore({ view, active: "", loading: false })
 
     if (view === "model") focusSearch()
+
+    // Levels can arrive from the provider's own `/models` answer, so ask again whenever Effort opens.
+    if (view === "effort" && props.refresh) {
+      setStore("loading", true)
+      void Promise.resolve(props.refresh()).finally(() => setStore("loading", false))
+    }
   }
 
   const setOpen = (open: boolean) => {
     if (!open) {
-      setStore({ open: false, view: "root", search: "", active: "" })
+      setStore({ open: false, view: "root", search: "", active: "", loading: false })
       dismiss.afterClose(props.onClose)
 
       return
     }
 
     dismiss.allowTriggerRestore()
-    setStore({ open: true, view: "root", search: "", active: "" })
+    setStore({ open: true, view: "root", search: "", active: "", loading: false })
   }
 
   const setSearch = (value: string) => {
@@ -173,9 +186,7 @@ export const ModelSelectorPopoverView: Component<{
           ref={(element: HTMLDivElement) => (contentRef = element)}
           dir="ltr"
           data-slot="model-selector-menu"
-          class={`${surface} shadow-[0_20px_44px_rgba(0,0,0,0.42)] ${
-            store.view === "model" ? "w-[264px]" : store.view === "effort" ? "w-[160px]" : "w-[224px]"
-          } max-w-[calc(100vw-16px)]`}
+          class={`${surface} shadow-[0_20px_44px_rgba(0,0,0,0.42)] ${width()} max-w-[calc(100vw-16px)]`}
           onPointerDownOutside={dismiss.preventTriggerRestore}
           onFocusOutside={dismiss.preventTriggerRestore}
           onCloseAutoFocus={dismiss.onCloseAutoFocus}
@@ -356,32 +367,42 @@ export const ModelSelectorPopoverView: Component<{
 
           <Show when={store.view === "effort"}>
             <div class="flex flex-col">
-              <For each={effortOptions()}>
-                {(item) => {
-                  const active = () =>
-                    item === "default" ? effort() === undefined : effortLabel(effort()).toLowerCase() === item
+              <Show
+                when={!store.loading}
+                fallback={
+                  <div data-slot="model-selector-row" role="status" class={row}>
+                    <Spinner class="size-3.5 shrink-0" />
+                    <span class="min-w-0 flex-1 truncate">{language.t("dialog.model.effort.loading")}</span>
+                  </div>
+                }
+              >
+                <For each={effortOptions()}>
+                  {(item) => {
+                    const active = () =>
+                      item === "default" ? effort() === undefined : effortLabel(effort()).toLowerCase() === item
 
-                  return (
-                    <button
-                      type="button"
-                      data-slot="model-selector-row"
-                      class={row}
-                      onClick={() =>
-                        close(() => {
-                          props.onVariant?.(item === "default" ? undefined : item)
-                        })
-                      }
-                    >
-                      <span class="min-w-0 flex-1 truncate capitalize text-v2-text-text-contrast">
-                        {effortLabel(item === "default" ? undefined : item)}
-                      </span>
-                      <Show when={active()}>
-                        <Icon name="check" size="small" class="shrink-0 text-v2-icon-icon-base" />
-                      </Show>
-                    </button>
-                  )
-                }}
-              </For>
+                    return (
+                      <button
+                        type="button"
+                        data-slot="model-selector-row"
+                        class={row}
+                        onClick={() =>
+                          close(() => {
+                            props.onVariant?.(item === "default" ? undefined : item)
+                          })
+                        }
+                      >
+                        <span class="min-w-0 flex-1 truncate capitalize text-v2-text-text-contrast">
+                          {effortLabel(item === "default" ? undefined : item)}
+                        </span>
+                        <Show when={active()}>
+                          <Icon name="check" size="small" class="shrink-0 text-v2-icon-icon-base" />
+                        </Show>
+                      </button>
+                    )
+                  }}
+                </For>
+              </Show>
             </div>
           </Show>
         </Menu.Content>

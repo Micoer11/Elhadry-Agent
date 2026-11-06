@@ -26,7 +26,7 @@ const tokenSharingMessages = {
 }
 
 const FREE_USAGE_LIMIT_MESSAGE =
-  "Free usage limit reached. Connect a provider or subscribe to Elhadry Agent Go to keep going, or switch models."
+  "Free usage limit reached. Connect a provider or subscribe to OpenCode Go to keep going, or switch models."
 const BUDGET_LIMIT_MESSAGE = "Workspace usage limit reached. Model use is paused until the limit resets."
 const MODEL_BUDGET_LIMIT_MESSAGE = "You've reached the spend limit for this model. Switch models to keep going."
 
@@ -106,19 +106,19 @@ export function contentFilterError(summary: string, reason: FinishReasonDetails)
   }
 }
 
-// Elhadry Console names what a refusing budget covers, in its envelope's metadata or, for Google clients, ErrorInfo.
+// OpenCode Console names what a refusing budget covers, in its envelope's metadata or, for Google clients, ErrorInfo.
 function budgetLimit(reason: AIError["reason"]): SessionError.Error {
   if (/"coverage"\s*:\s*"models"/.test(reason.body ?? ""))
     return { ...providerError("provider.model-budget-limit", reason), message: MODEL_BUDGET_LIMIT_MESSAGE }
   return { ...providerError("provider.budget-limit", reason), message: BUDGET_LIMIT_MESSAGE }
 }
 
-// Elhadry Console names the Go limit that refused the request (5 hour, weekly or monthly) in its envelope's metadata.
+// OpenCode Console names the Go limit that refused the request (5 hour, weekly or monthly) in its envelope's metadata.
 function goLimit(reason: AIError["reason"]): SessionError.Error {
   const name = /"limitName"\s*:\s*"([^"]+)"/.exec(reason.body ?? "")?.[1]
   return {
     ...providerError("provider.go-limit", reason),
-    message: `Elhadry Agent Go ${name ? `${name} ` : ""}usage limit reached. Switch to a free model, or turn on Extra Usage on the Go page in Elhadry Console to keep going.`,
+    message: `OpenCode Go ${name ? `${name} ` : ""}usage limit reached. Switch to a free model, or turn on Extra Usage on the Go page in OpenCode Console to keep going.`,
   }
 }
 

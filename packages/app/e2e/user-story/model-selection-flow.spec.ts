@@ -37,7 +37,7 @@ test("creates a session in a new project and selects its model", async ({ page }
         },
         {
           id: "opencode-go",
-          name: "Elhadry Agent Go",
+          name: "OpenCode Go",
           models: {
             "go-model-1": {
               id: "go-model-1",

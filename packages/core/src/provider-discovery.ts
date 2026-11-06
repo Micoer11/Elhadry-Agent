@@ -94,6 +94,46 @@ const decodeModalities = Schema.decodeUnknownOption(SourceModalities)
 
 const decodeReasoning = Schema.decodeUnknownOption(ConfigProvider.Reasoning)
 
+// Real reasoning levels come from the server that serves the models, not a guessed ladder. A short cache keeps a
+// provider list request from fetching the same endpoint again while the model selector opens and closes.
+const CACHE_TTL = 5 * 60_000
+
+const cache = new Map<string, { readonly at: number; readonly models: readonly Model[] }>()
+
+/** The last model list read for this endpoint, while it is still fresh. */
+export function cached(baseURL: string | undefined): readonly Model[] | undefined {
+  if (!baseURL) return undefined
+  const key = cacheKey(baseURL)
+  const entry = cache.get(key)
+  if (!entry) return undefined
+  if (Date.now() - entry.at > CACHE_TTL) {
+    cache.delete(key)
+    return undefined
+  }
+  return entry.models
+}
+
+/**
+ * Reads an endpoint's model list, reusing a fresh result. Returns whether it fetched, so callers know when to rebuild
+ * the models that read the cache.
+ */
+export const refresh = Effect.fn("ProviderDiscovery.refresh")(function* (input: {
+  readonly baseURL: string
+  readonly apiKey?: string
+  readonly headers?: Readonly<Record<string, string>>
+}) {
+  const key = cacheKey(input.baseURL)
+  const entry = cache.get(key)
+  if (entry && Date.now() - entry.at <= CACHE_TTL) return false
+  const models = yield* list(input)
+  cache.set(key, { at: Date.now(), models })
+  return true
+})
+
+function cacheKey(baseURL: string) {
+  return baseURL.trim().replace(/\/+$/, "").toLowerCase()
+}
+
 /**
  * Asks an OpenAI-compatible server which models it serves. The runtime performs this so a browser
  * cross-origin policy cannot block a custom provider whose server sends no CORS headers.

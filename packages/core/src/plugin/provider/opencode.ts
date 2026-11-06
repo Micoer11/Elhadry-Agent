@@ -43,9 +43,9 @@ const SsoRequired = Schema.Struct({
 const InvalidGrant = Schema.Struct({ error: Schema.Literal("invalid_grant") })
 // Console's 401 when the session behind the access token was revoked or expired.
 const Unauthorized = Schema.Struct({ _tag: Schema.Literal("Unauthorized") })
-const signedOutMessage = "Reconnect Elhadry Console to continue"
+const signedOutMessage = "Reconnect OpenCode Console to continue"
 const ssoMessage = (organization: string | undefined) =>
-  `Sign in with SSO again to use ${organization ?? "your Elhadry Console organization"}`
+  `Sign in with SSO again to use ${organization ?? "your OpenCode Console organization"}`
 
 class SsoRequiredError extends Schema.TaggedError<SsoRequiredError>()("OpencodeConsole.SsoRequired", {
   organization: Schema.optional(Schema.String),
@@ -69,7 +69,7 @@ function oauth(http: HttpClient.HttpClient) {
     method: {
       id: methodID,
       type: "oauth",
-      label: "Elhadry Console account",
+      label: "OpenCode Console account",
       form: [
         {
           key: "server",
@@ -156,7 +156,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
     const loading = Semaphore.makeUnsafe(1)
     type ActiveConnection = Effect.Success<ReturnType<typeof ctx.integration.connection.active>>
     let snapshot: {
-      // The Console's regular Elhadry Agent config, merged as an integration config layer.
+      // The Console's regular OpenCode config, merged as an integration config layer.
       remote: ConfigIntegration.Remote | undefined
       connection: ActiveConnection
       organization: string | undefined
@@ -196,7 +196,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
             // Only well-formed Console errors change the connection status; anything else may be transient.
             const next = connectionStatus(cause)
             if (next) yield* status(next)
-            yield* Effect.logWarning("failed to load Elhadry Agent provider config", { cause })
+            yield* Effect.logWarning("failed to load OpenCode provider config", { cause })
             // A load that fails for the connection already in place keeps its last config: dropping it
             // would lift organization policy while personal credentials keep working.
             return IntegrationConnection.key(connection) === IntegrationConnection.key(snapshot.connection)
@@ -235,7 +235,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
     })
     const search = (providerID: WebSearch.ID, connection: NonNullable<ActiveConnection>) => ({
       id: providerID,
-      name: "Elhadry Web Search",
+      name: "OpenCode Web Search",
       execute: (input: WebSearch.ProviderInput) =>
         Effect.gen(function* () {
           const active = yield* ctx.integration.connection.active("opencode")
@@ -245,11 +245,11 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
               ? active.type !== "credential" || active.id !== connection.id
               : active.type !== "env" || active.name !== connection.name)
           ) {
-            return yield* Effect.fail(new Error("Elhadry Console connection changed"))
+            return yield* Effect.fail(new Error("OpenCode Console connection changed"))
           }
           const credential = yield* ctx.integration.connection.resolve(active)
           if (!credential || credential.type === "external")
-            return yield* Effect.fail(new Error("Elhadry Console is not connected"))
+            return yield* Effect.fail(new Error("OpenCode Console is not connected"))
           const metadata = credential.metadata
           const orgID = typeof metadata?.orgID === "string" ? metadata.orgID : undefined
           const token = credential.type === "oauth" ? credential.access : credential.key
@@ -271,12 +271,12 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
               Effect.scoped,
               Effect.timeoutOrElse({
                 duration: Duration.seconds(25),
-                orElse: () => Effect.fail(new Error("Elhadry web search request timed out")),
+                orElse: () => Effect.fail(new Error("OpenCode web search request timed out")),
               }),
             )
           if (response.providerID !== providerID) {
             return yield* Effect.fail(
-              new Error(`Elhadry web search returned provider ${response.providerID} instead of ${providerID}`),
+              new Error(`OpenCode web search returned provider ${response.providerID} instead of ${providerID}`),
             )
           }
           return response.results
@@ -285,7 +285,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
 
     yield* ctx.integration.transform((editor) => {
       editor.update("opencode", (integration) => {
-        integration.name = "Elhadry Console"
+        integration.name = "OpenCode Console"
       })
       editor.method.update(oauth(http))
       editor.method.update({ integrationID: "opencode", method: { type: "key", label: "API key (service account)" } })
@@ -479,7 +479,7 @@ function normalizeServer(input: unknown) {
       return `${url.origin}${url.pathname.replace(/\/+$/, "")}`
     },
     catch: (cause) =>
-      new Error(`Invalid Elhadry Agent server URL: ${cause instanceof Error ? cause.message : String(cause)}`),
+      new Error(`Invalid OpenCode server URL: ${cause instanceof Error ? cause.message : String(cause)}`),
   })
 }
 
@@ -522,7 +522,7 @@ function credential(http: HttpClient.HttpClient, server: string, token: typeof T
         ? orgs.toSorted((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))[0]
         : orgs.find((org) => org.id === token.org_id)
     if (token.org_id != null && !org) {
-      return yield* Effect.fail(new Error(`Elhadry Agent organization not found: ${token.org_id}`))
+      return yield* Effect.fail(new Error(`OpenCode organization not found: ${token.org_id}`))
     }
     return Credential.OAuth.make({
       type: "oauth" as const,
