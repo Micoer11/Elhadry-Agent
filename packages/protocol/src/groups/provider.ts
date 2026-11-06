@@ -1,4 +1,5 @@
 import { Provider } from "@elhadry/schema/provider"
+import { ConfigProvider } from "@elhadry/schema/config/provider"
 import { Location } from "@elhadry/schema/location"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
@@ -12,9 +13,27 @@ const DiscoverModelsInput = Schema.Struct({
   headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 }).annotate({ identifier: "Provider.DiscoverModelsInput" })
 
+const DiscoveredCapabilities = Schema.Struct({
+  tools: Schema.optional(Schema.Boolean),
+  input: Schema.optional(Schema.Array(Schema.String)),
+  output: Schema.optional(Schema.Array(Schema.String)),
+  temperature: Schema.optional(Schema.Boolean),
+}).annotate({ identifier: "Provider.DiscoveredCapabilities" })
+
+const DiscoveredLimit = Schema.Struct({
+  context: Schema.optional(Schema.Int),
+  input: Schema.optional(Schema.Int),
+  output: Schema.optional(Schema.Int),
+}).annotate({ identifier: "Provider.DiscoveredLimit" })
+
 const DiscoveredModel = Schema.Struct({
   id: Schema.String,
   name: Schema.optional(Schema.String),
+  // Metadata is optional: many OpenAI-compatible servers only return ids, so clients keep their defaults.
+  capabilities: Schema.optional(DiscoveredCapabilities),
+  // The server's reasoning controls in models.dev's shape, so clients persist real levels instead of guessing.
+  reasoning: Schema.optional(ConfigProvider.Reasoning),
+  limit: Schema.optional(DiscoveredLimit),
 }).annotate({ identifier: "Provider.DiscoveredModel" })
 
 export const ProviderGroup = HttpApiGroup.make("server.provider")

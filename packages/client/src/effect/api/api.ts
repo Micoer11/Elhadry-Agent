@@ -1609,7 +1609,36 @@ export type ProviderModelsInput = {
   readonly apiKey?: string | undefined
   readonly headers?: { readonly [x: string]: string } | undefined
 }
-export type ProviderModelsOutput = ReadonlyArray<{ readonly id: string; readonly name?: string | undefined }>
+export type ProviderModelsOutput = ReadonlyArray<{
+  readonly id: string
+  readonly name?: string | undefined
+  readonly capabilities?:
+    | {
+        readonly tools?: boolean | undefined
+        readonly input?: ReadonlyArray<string> | undefined
+        readonly output?: ReadonlyArray<string> | undefined
+        readonly temperature?: boolean | undefined
+      }
+    | undefined
+  readonly reasoning?:
+    | (
+        | { readonly supported: false }
+        | {
+            readonly supported: true
+            readonly toggle?: boolean | undefined
+            readonly effort?: ReadonlyArray<string> | undefined
+            readonly budget?: { readonly min?: number | undefined; readonly max?: number | undefined } | undefined
+          }
+      )
+    | undefined
+  readonly limit?:
+    | {
+        readonly context?: number | undefined
+        readonly input?: number | undefined
+        readonly output?: number | undefined
+      }
+    | undefined
+}>
 export type ProviderModelsOperation<E = never> = (input: ProviderModelsInput) => Effect.Effect<ProviderModelsOutput, E>
 
 export interface ProviderApi<E = never> {

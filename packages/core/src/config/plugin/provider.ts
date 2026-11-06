@@ -7,6 +7,7 @@ import { Document, type Entry } from "@elhadry/schema/config"
 import { ConfigProvider } from "@elhadry/schema/config/provider"
 import { Money } from "@elhadry/schema/money"
 import { Effect } from "effect"
+import { AISDKNative } from "../../aisdk-native.js"
 import { Config } from "../../config.js"
 import { Model } from "../../model.js"
 import { Provider } from "../../provider.js"
@@ -101,6 +102,7 @@ export const Plugin = define({
       if (configuredDefault !== undefined) models.default.set(configuredDefault.providerID, configuredDefault.model)
       for (const [item, definition] of sources.models) {
         const providerID = definition.providerID
+        const provider = models.provider.get(providerID)?.provider
         for (const [id, config] of Object.entries(item.models ?? {})) {
           const source = definition.models.get(id)
           const existing = models.get(providerID, id)
@@ -108,7 +110,7 @@ export const Plugin = define({
           const inherit = source?.inherit || !existing
           overlay(
             models,
-            models.provider.get(providerID)?.provider.package,
+            provider?.package,
             item,
             providerID,
             id,
@@ -121,20 +123,49 @@ export const Plugin = define({
             source?.base !== undefined &&
             source.base.variants.length > 0 &&
             models.get(providerID, id)?.package !== source.base.package
-          if (
-            config.variants === undefined &&
-            config.capabilities?.reasoning === undefined &&
-            // Custom models start without variants, so non-empty variants here came from an earlier transform.
-            ((!source?.base && !hadVariants) || repackaged)
-          )
+          if (config.variants !== undefined || config.capabilities?.reasoning !== undefined) continue
+          // A model moved to another package, or a custom model that explicitly names a package, asks for
+          // that protocol's real controls. Variants supplied by a plugin are already the right ones.
+          const movedPackage = repackaged || (config.package !== undefined && !source?.base && !hadVariants)
+          if (movedPackage) {
             models.update(providerID, id, (model) => {
               model.variants = [
-                ...Variant.resolve({
-                  ...model,
-                  package: model.package ?? models.provider.get(providerID)?.provider.package,
-                }),
+                ...Variant.resolve({ ...model, package: model.package ?? provider?.package }),
               ]
             })
+            continue
+          }
+          // Variants from a catalog base or an earlier transform are already the real ones.
+          if (hadVariants || (source?.base?.variants.length ?? 0) > 0) continue
+          // A server that advertises no reasoning must not inherit a guessed low/medium/high ladder. The
+          // catalog has the real levels for providers it knows, matched by endpoint and model id.
+          const catalog = catalogModel(models, providerID, provider?.settings?.baseURL, config.modelID ?? id)
+          models.update(providerID, id, (model) => {
+            if (!catalog) return
+            const packageName = model.package ?? provider?.package
+            const sameProtocol =
+              protocol(packageName, providerID, model.modelID) ===
+              protocol(catalog.package, providerID, catalog.model.modelID)
+            if (sameProtocol)
+              model.variants = catalog.model.variants.map((variant) => ({ ...structuredClone(variant) }))
+            model.capabilities = {
+              ...model.capabilities,
+              ...(config.capabilities?.tools === undefined ? { tools: catalog.model.capabilities.tools } : {}),
+              ...(config.capabilities?.input === undefined ? { input: [...catalog.model.capabilities.input] } : {}),
+              ...(config.capabilities?.output === undefined ? { output: [...catalog.model.capabilities.output] } : {}),
+              ...(config.capabilities?.temperature === undefined &&
+              catalog.model.capabilities.temperature !== undefined
+                ? { temperature: catalog.model.capabilities.temperature }
+                : {}),
+            }
+            model.limit = {
+              context: config.limit?.context ?? catalog.model.limit.context,
+              ...((config.limit?.input ?? catalog.model.limit.input) === undefined
+                ? {}
+                : { input: config.limit?.input ?? catalog.model.limit.input }),
+              output: config.limit?.output ?? catalog.model.limit.output,
+            }
+          })
         }
       }
     })
@@ -271,4 +302,46 @@ function overlay(
     }
     if (config.disabled !== undefined) model.enabled = !config.disabled
   })
+}
+
+// A custom provider often mirrors a catalog entry under another id (Kilo, OpenRouter and local gateways all do).
+// Endpoint matching finds its real model metadata, and a globally unique model id is the fallback.
+function catalogModel(
+  models: Pick<ModelEditor, "provider">,
+  providerID: string,
+  baseURL: string | undefined,
+  modelID: string,
+): { readonly model: Model.Info; readonly package: string | undefined } | undefined {
+  const candidates = models.provider.list().filter((record) => record.provider.id !== providerID)
+  const endpoint = normalizeBaseURL(baseURL)
+  if (endpoint) {
+    for (const record of candidates) {
+      if (normalizeBaseURL(record.provider.settings?.baseURL) !== endpoint) continue
+      const model = record.models.get(modelID)
+      if (model) return { model, package: record.provider.package }
+    }
+  }
+  const matches = candidates.flatMap((record) => {
+    const model = record.models.get(modelID)
+    return model ? [{ model, package: record.provider.package }] : []
+  })
+  return matches.length === 1 ? matches[0] : undefined
+}
+
+// OpenAI-compatible base URLs commonly end in `/v1`, while the catalog usually omits it.
+function normalizeBaseURL(value: string | undefined) {
+  if (!value) return
+  const trimmed = value.trim().replace(/\/+$/, "")
+  if (!URL.canParse(trimmed)) return trimmed.toLowerCase()
+  const url = new URL(trimmed)
+  const pathname = url.pathname.replace(/\/+$/, "").replace(/\/v1$/i, "")
+  return `${url.protocol}//${url.host}${pathname}`.toLowerCase()
+}
+
+// Variants are request overlays, so they only transfer between packages that speak the same protocol.
+function protocol(packageName: string | undefined, providerID: string, modelID: string) {
+  const name = Provider.packageName(packageName)
+  if (!name) return
+  if (!Provider.isAISDK(packageName)) return name
+  return AISDKNative.native(name, { providerID, modelID }) ?? name
 }

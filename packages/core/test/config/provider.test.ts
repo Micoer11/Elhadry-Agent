@@ -394,6 +394,60 @@ describe("ConfigProviderPlugin.Plugin", () => {
       const model = required(yield* models.get(providerID, modelID))
       expect(model.capabilities).toEqual({ tools: true, input: ["text", "image"], output: ["text"] })
       expect(model.limit).toEqual({ context: 200_000, output: 32_000 })
+      // No reasoning metadata means no guessed effort ladder.
+      expect(model.variants).toEqual([])
+    }),
+  )
+
+  it.effect("takes real reasoning, capabilities, and limits from a catalog provider at the same endpoint", () =>
+    Effect.gen(function* () {
+      const providers = yield* Provider.Service
+      const models = yield* Model.Service
+      const catalogID = Provider.ID.make("kilo")
+      const customID = Provider.ID.make("free")
+      const modelID = Model.ID.make("nvidia/nemotron-3.5-super-vl:free")
+      yield* providers.transform((editor) => {
+        editor.update(catalogID, (provider) => {
+          provider.package = "@elhadry/ai/providers/openai-compatible"
+          provider.settings = { baseURL: "https://api.kilo.ai/api/gateway" }
+        })
+        editor.models.update(catalogID, modelID, (model) => {
+          model.package = "@elhadry/ai/providers/openai-compatible"
+          model.capabilities = { tools: true, input: ["text", "image"], output: ["text"], temperature: true }
+          model.limit = { context: 1_000_000, output: 131_072 }
+          model.variants = [
+            { id: Model.VariantID.make("none"), settings: { reasoningEffort: "none" } },
+            { id: Model.VariantID.make("high"), settings: { reasoningEffort: "high" } },
+          ]
+        })
+      })
+      yield* addPlugin([
+        new Document({
+          type: "document",
+          info: decode({
+            providers: {
+              free: {
+                package: "aisdk:@ai-sdk/openai-compatible",
+                settings: { baseURL: "https://api.kilo.ai/api/gateway/v1" },
+                models: { "nvidia/nemotron-3.5-super-vl:free": { capabilities: { tools: true } } },
+              },
+            },
+          }),
+        }),
+      ])
+
+      const model = required(yield* models.get(customID, modelID))
+      expect(model.variants.map((variant) => variant.id)).toEqual([
+        Model.VariantID.make("none"),
+        Model.VariantID.make("high"),
+      ])
+      expect(model.capabilities).toEqual({
+        tools: true,
+        input: ["text", "image"],
+        output: ["text"],
+        temperature: true,
+      })
+      expect(model.limit).toEqual({ context: 1_000_000, output: 131_072 })
     }),
   )
 

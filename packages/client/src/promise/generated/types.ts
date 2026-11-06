@@ -220,7 +220,18 @@ export type VoiceWebSocketTransport = { type: "websocket"; url: string; token: s
 
 export type IntegrationID = string
 
-export type ProviderDiscoveredModel = { id: string; name?: string | undefined }
+export type ProviderDiscoveredCapabilities = {
+  tools?: boolean | null
+  input?: Array<string> | null
+  output?: Array<string> | null
+  temperature?: boolean | null
+}
+
+export type ConfigModelReasoning =
+  | { supported: false }
+  | { supported: true; toggle?: boolean; effort?: Array<string>; budget?: { min?: number; max?: number } }
+
+export type ProviderDiscoveredLimit = { context?: number | null; input?: number | null; output?: number | null }
 
 export type IntegrationMethodID = string
 
@@ -369,10 +380,6 @@ export type UsageLimitsMeter = { percent: number; limited: boolean; resetsAt: nu
 export type McpProtocol = "legacy" | "auto" | "2026-07-28"
 
 export type ConfigWorktree = { directory: string }
-
-export type ConfigModelReasoning =
-  | { supported: false }
-  | { supported: true; toggle?: boolean; effort?: Array<string>; budget?: { min?: number; max?: number } }
 
 export type ConfigShellOption = { path: string; name: string; acceptable: boolean }
 
@@ -736,6 +743,22 @@ export type VoiceModel = { model: string; provider: string; transports: Array<Vo
 
 export type VoiceTransport = VoiceWebRTCTransport | VoiceWebSocketTransport
 
+export type ConfigModelCapabilities = {
+  tools?: boolean
+  input?: Array<string>
+  output?: Array<string>
+  temperature?: boolean
+  reasoning?: ConfigModelReasoning
+}
+
+export type ProviderDiscoveredModel = {
+  id: string
+  name?: string | null
+  capabilities?: ProviderDiscoveredCapabilities | null
+  reasoning?: ConfigModelReasoning | null
+  limit?: ProviderDiscoveredLimit | null
+}
+
 export type IntegrationCommandMethod = {
   id: IntegrationMethodID
   type: "command"
@@ -947,14 +970,6 @@ export type VcsInfo = { provider?: string; branch: VcsBranch }
 export type WebSearchProvider = { id: WebSearchID; name: string }
 
 export type UsageLimitsGo = { rolling: UsageLimitsMeter; weekly: UsageLimitsMeter; monthly: UsageLimitsMeter }
-
-export type ConfigModelCapabilities = {
-  tools?: boolean
-  input?: Array<string>
-  output?: Array<string>
-  temperature?: boolean
-  reasoning?: ConfigModelReasoning
-}
 
 export type SessionMessageLocationSwitched = {
   id: SessionMessageID

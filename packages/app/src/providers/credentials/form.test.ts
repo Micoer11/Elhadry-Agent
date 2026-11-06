@@ -44,6 +44,54 @@ describe("validateCustomProvider", () => {
     })
   })
 
+  test("persists discovered capabilities and reasoning levels", () => {
+    const result = validateCustomProvider({
+      form: {
+        providerID: "custom-provider",
+        name: "Custom Provider",
+        baseURL: "https://api.example.com",
+        apiKey: "",
+        models: [
+          {
+            row: "m0",
+            id: "reasoning-model",
+            name: "Reasoning Model",
+            meta: {
+              capabilities: {
+                tools: true,
+                input: ["text", "image"],
+                output: ["text"],
+                temperature: true,
+              },
+              reasoning: { supported: true, effort: ["none", "high"] },
+              limit: { context: 1_000_000, output: 131_072 },
+            },
+            err: {},
+          },
+        ],
+        headers: [{ row: "h0", key: "", value: "", err: {} }],
+        err: {},
+      },
+      t,
+      disabledProviders: [],
+      existingProviderIDs: new Set(),
+    })
+
+    expect(result.result?.config.models).toEqual({
+      "reasoning-model": {
+        name: "Reasoning Model",
+        capabilities: {
+          tools: true,
+          input: ["text", "image"],
+          output: ["text"],
+          temperature: true,
+          reasoning: { supported: true, effort: ["none", "high"] },
+        },
+        limit: { context: 1_000_000, output: 131_072 },
+      },
+    })
+  })
+
   test("flags duplicate rows and allows reconnecting disabled providers", () => {
     const result = validateCustomProvider({
       form: {

@@ -1,8 +1,22 @@
+import type {
+  ConfigEntry,
+  ConfigModelCapabilities,
+  ConfigProviderSettings,
+  ProviderDiscoveredModel,
+} from "@elhadry/client"
+
 const PROVIDER_ID = /^[a-z0-9][a-z0-9-_]*$/
 
 const OPENAI_COMPATIBLE = "aisdk:@ai-sdk/openai-compatible"
 
+type ProviderConfig = NonNullable<NonNullable<Extract<ConfigEntry, { type: "document" }>["info"]["providers"]>[string]>
+
+type ModelConfig = NonNullable<ProviderConfig["models"]>[string]
+
 type Translator = (key: string, vars?: Record<string, string | number | boolean>) => string
+
+/** Metadata the server discovered for a model, kept on the row until the provider is saved. */
+export type ModelMeta = Omit<ProviderDiscoveredModel, "id" | "name">
 
 export type ModelErr = {
   id?: string
@@ -18,6 +32,7 @@ export type ModelRow = {
   row: string
   id: string
   name: string
+  meta?: ModelMeta
   err: ModelErr
 }
 
@@ -110,11 +125,41 @@ export function validateCustomProvider(input: ValidateArgs) {
   const modelsValid = models.every((m) => !m.id && !m.name)
 
   const filled = input.form.models
-    .map((m) => ({ id: m.id.trim(), name: m.name.trim() || m.id.trim() }))
+    .map((m) => ({ id: m.id.trim(), name: m.name.trim() || m.id.trim(), meta: m.meta }))
     .filter((m) => !!m.id)
 
   const modelConfig = Object.fromEntries(
-    filled.map((m) => [m.id, { ...(m.name === m.id ? {} : { name: m.name }), capabilities: { tools: true } }]),
+    filled.map((m) => {
+      const capabilities: ConfigModelCapabilities = { tools: m.meta?.capabilities?.tools ?? true }
+
+      if (m.meta?.capabilities?.input) capabilities.input = [...m.meta.capabilities.input]
+
+      if (m.meta?.capabilities?.output) capabilities.output = [...m.meta.capabilities.output]
+
+      const temperature = m.meta?.capabilities?.temperature
+
+      if (temperature !== null && temperature !== undefined) capabilities.temperature = temperature
+
+      if (m.meta?.reasoning) capabilities.reasoning = m.meta.reasoning
+
+      const config: ModelConfig = { capabilities }
+
+      if (m.name !== m.id) config.name = m.name
+
+      if (m.meta?.limit) {
+        const limit: NonNullable<ModelConfig["limit"]> = {}
+
+        if (m.meta.limit.context !== null && m.meta.limit.context !== undefined) limit.context = m.meta.limit.context
+
+        if (m.meta.limit.input !== null && m.meta.limit.input !== undefined) limit.input = m.meta.limit.input
+
+        if (m.meta.limit.output !== null && m.meta.limit.output !== undefined) limit.output = m.meta.limit.output
+
+        config.limit = limit
+      }
+
+      return [m.id, config]
+    }),
   )
 
   const modelsError = filled.length === 0 ? input.t("provider.custom.error.models.required") : undefined
@@ -162,6 +207,19 @@ export function validateCustomProvider(input: ValidateArgs) {
 
   if (!ok) return { err, models, headers }
 
+  const settings: ConfigProviderSettings = { baseURL }
+
+  if (Object.keys(headerConfig).length) settings.headers = headerConfig
+
+  const config: ProviderConfig = {
+    package: OPENAI_COMPATIBLE,
+    name,
+    settings,
+    models: modelConfig,
+  }
+
+  if (env) config.env = [env]
+
   return {
     err,
     models,
@@ -170,17 +228,7 @@ export function validateCustomProvider(input: ValidateArgs) {
       providerID,
       name,
       key,
-      config: {
-        package: OPENAI_COMPATIBLE,
-        name,
-        ...(env ? { env: [env] } : {}),
-        // No `apiKey` key at all when the field is empty: the request must not carry an empty credential.
-        settings: {
-          baseURL,
-          ...(Object.keys(headerConfig).length ? { headers: headerConfig } : {}),
-        },
-        models: modelConfig,
-      },
+      config,
     },
   }
 }
@@ -189,6 +237,6 @@ let row = 0
 
 const nextRow = () => `row-${row++}`
 
-export const modelRow = (id = "", name = ""): ModelRow => ({ row: nextRow(), id, name, err: {} })
+export const modelRow = (id = "", name = "", meta?: ModelMeta): ModelRow => ({ row: nextRow(), id, name, meta, err: {} })
 
 export const headerRow = (): HeaderRow => ({ row: nextRow(), key: "", value: "", err: {} })

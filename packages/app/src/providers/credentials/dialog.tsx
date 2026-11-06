@@ -5,6 +5,7 @@ import { IconButton } from "@elhadry/ui/icon-button"
 import { Spinner } from "@elhadry/ui/spinner"
 import { useMutation } from "@tanstack/solid-query"
 import { TextField } from "@elhadry/ui/text-field"
+import type { ProviderDiscoveredModel } from "@elhadry/client"
 import { showToast } from "@/shell/notifications/toast"
 import { batch, createMemo, createSignal, For, Show } from "solid-js"
 import { createStore, produce } from "solid-js/store"
@@ -42,7 +43,7 @@ export function CustomProviderForm(props: { autofocus?: boolean; directory?: str
     loading: boolean
     loaded: boolean
     error?: string
-    models: Array<{ id: string; name?: string; checked: boolean }>
+    models: Array<ProviderDiscoveredModel & { checked: boolean }>
   }>({ loading: false, loaded: false, models: [] })
 
   const added = createMemo(() => new Set(form.models.map((model) => model.id.trim()).filter(Boolean)))
@@ -65,7 +66,7 @@ export function CustomProviderForm(props: { autofocus?: boolean; directory?: str
     () => fetched.models.length > 0 && fetched.models.every((model) => model.checked || added().has(model.id)),
   )
 
-  const addModel = (id: string, name?: string) => {
+  const addModel = (id: string, name?: string, meta?: Omit<ProviderDiscoveredModel, "id" | "name">) => {
     const modelID = id.trim()
 
     if (!modelID) return
@@ -74,7 +75,7 @@ export function CustomProviderForm(props: { autofocus?: boolean; directory?: str
     setForm(
       "models",
       produce((rows) => {
-        rows.push(modelRow(modelID, name?.trim() ?? ""))
+        rows.push(modelRow(modelID, name?.trim() ?? "", meta))
       }),
     )
     setForm("err", "models", undefined)
@@ -96,7 +97,7 @@ export function CustomProviderForm(props: { autofocus?: boolean; directory?: str
   }
 
   const addSelected = () => {
-    for (const model of selected()) addModel(model.id, model.name)
+    for (const { id, name, ...meta } of selected()) addModel(id, name ?? undefined, meta)
     setFetched({ models: [], loaded: false })
   }
 
