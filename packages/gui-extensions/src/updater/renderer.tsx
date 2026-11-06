@@ -16,7 +16,7 @@ const setup: Setup<typeof definition> = (ctx) => {
     return live.status === "active" ? live.value.state() : undefined
   }
 
-  const act = (name: "check" | "install") => {
+  const act = (name: "check" | "download" | "install") => {
     const live = updater()
 
     if (live.status === "active") return void import("./actions").then((module) => module[name](ctx, live.value))
@@ -32,16 +32,22 @@ const setup: Setup<typeof definition> = (ctx) => {
   ctx.add(TitlebarItem, () => {
     const current = state()
     const installing = current?.status === "installing"
-    const ready = current?.status === "ready" || current?.status === "download-required"
 
-    if (!ready && !installing) return
+    const offered =
+      current?.status === "available" ||
+      current?.status === "ready" ||
+      current?.status === "download-required"
+
+    if (!offered && !installing) return
+
+    const action = updaterAction(current)
 
     return {
       id: "update",
       label: ctx.t("status.label"),
-      title: ctx.t(updaterAction(current).label),
+      title: ctx.t(action.label),
       busy: installing,
-      run: () => act("install"),
+      run: action.run ? () => act(action.run) : undefined,
     }
   })
 

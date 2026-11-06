@@ -9,9 +9,9 @@ afterEach(async () => {
   await Promise.all(scopes.splice(0).map((scope) => Effect.runPromise(Scope.close(scope, Exit.void))))
 })
 
-// Drives the updater the way the app does: start or check, then install like a button click. `calls` records the platform
-// operations in order; downloads record whether a differential download was allowed and installs record the staged
-// version they would apply. `seen` records every state the updater published.
+// Drives the updater the way the app does: start, check, download when the user confirms, then install like a button
+// click. `calls` records the platform operations in order; downloads record whether a differential download was allowed
+// and installs record the staged version they would apply. `seen` records every state the updater published.
 async function setup(input?: {
   currentVersion?: string
   ready?: { version: string }
@@ -19,6 +19,8 @@ async function setup(input?: {
   checks?: readonly string[]
   stage?: () => Promise<void>
   install?: () => Promise<void>
+  /** Runs before the platform answers a check, so a test can hold one check in flight. */
+  gate?: () => Promise<void>
   external?: boolean
   open?: () => Promise<void>
 }) {
@@ -31,9 +33,10 @@ async function setup(input?: {
   const dependencies: Dependencies = {
     currentVersion: input?.currentVersion ?? "1.0.0",
     platform: {
-      checkForUpdate: Effect.try({
-        try: () => {
+      checkForUpdate: Effect.tryPromise({
+        try: async () => {
           calls.push("check")
+          await input?.gate?.()
           const version = checks[Math.min(cursor.check++, checks.length - 1)] ?? "2.0.0"
 
           if (version === "offline") throw new Error("offline")
@@ -61,7 +64,7 @@ async function setup(input?: {
         ? (url) =>
             Effect.tryPromise(async () => {
               calls.push(`external:${url}`)
-              await input.open?.()
+              await input?.open?.()
             })
         : undefined,
     },
@@ -95,6 +98,7 @@ async function setup(input?: {
     state: updater.state,
     start: () => Effect.runPromise(updater.started),
     check: () => Effect.runPromise(updater.check),
+    download: () => Effect.runPromise(updater.download),
     install: () => Effect.runPromise(updater.install),
     installFork: () => Effect.runFork(updater.install),
   }
@@ -107,8 +111,18 @@ describe("updater", () => {
   // re-checks published: a ready or offered update never leaves the screen while one runs.
   test.each([
     {
+      name: "reports an available update on launch without downloading or staging anything",
+      input: { checks: ["2.0.0"] },
+      stage: false,
+      calls: ["check"],
+      state: { status: "available", version: "2.0.0" },
+      ready: undefined,
+      rechecks: [],
+    },
+    {
       name: "revalidates a persisted target through the updater cache on launch without a differential download",
       input: { ready: { version: "2.0.0" }, checks: ["2.0.0"] },
+      stage: false,
       calls: ["check", "download:full"],
       state: { status: "ready", version: "2.0.0" },
       ready: { version: "2.0.0" },
@@ -117,6 +131,7 @@ describe("updater", () => {
     {
       name: "reports up to date and clears the record once the update is installed",
       input: { currentVersion: "2.0.0", ready: { version: "2.0.0" }, checks: ["2.0.0"] },
+      stage: false,
       calls: ["check"],
       state: { status: "up-to-date" },
       ready: undefined,
@@ -125,6 +140,7 @@ describe("updater", () => {
     {
       name: "keeps differential downloads after the persisted target was installed",
       input: { currentVersion: "2.0.0", ready: { version: "2.0.0" }, checks: ["3.0.0"] },
+      stage: true,
       calls: ["check", "download"],
       state: { status: "ready", version: "3.0.0" },
       ready: { version: "3.0.0" },
@@ -133,6 +149,7 @@ describe("updater", () => {
     {
       name: "downloads newer releases in full once one is staged",
       input: { checks: ["2.0.0", "3.0.0"] },
+      stage: true,
       calls: ["check", "download", "check", "download:full"],
       state: { status: "ready", version: "3.0.0" },
       ready: { version: "3.0.0" },
@@ -141,6 +158,7 @@ describe("updater", () => {
     {
       name: "later checks stay silent while ready and pick up newer versions",
       input: { checks: ["2.0.0", "2.0.0", "3.0.0"] },
+      stage: true,
       calls: ["check", "download", "check", "check", "download:full"],
       state: { status: "ready", version: "3.0.0" },
       ready: { version: "3.0.0" },
@@ -149,14 +167,25 @@ describe("updater", () => {
     {
       name: "keeps the staged update installable when a silent re-check fails",
       input: { checks: ["2.0.0", "offline"] },
+      stage: true,
       calls: ["check", "download", "check"],
       state: { status: "ready", version: "2.0.0" },
       ready: { version: "2.0.0" },
       rechecks: [],
     },
     {
+      name: "keeps an offered update across re-checks without republishing the same version",
+      input: { checks: ["2.0.0", "2.0.0", "3.0.0"] },
+      stage: false,
+      calls: ["check", "check", "check"],
+      state: { status: "available", version: "3.0.0" },
+      ready: undefined,
+      rechecks: [{ status: "available", version: "3.0.0" }],
+    },
+    {
       name: "offers an external installer when its version equals the running beta",
       input: { currentVersion: "2.0.0", external: true, checks: ["2.0.0"] },
+      stage: false,
       calls: ["check"],
       state: { status: "download-required", version: "2.0.0" },
       ready: undefined,
@@ -165,6 +194,7 @@ describe("updater", () => {
     {
       name: "keeps an external installer available when a refresh fails",
       input: { external: true, checks: ["2.0.0", "offline"] },
+      stage: false,
       calls: ["check", "check"],
       state: { status: "download-required", version: "2.0.0" },
       ready: undefined,
@@ -173,8 +203,10 @@ describe("updater", () => {
   ])("$name", async (row) => {
     const app = await setup(row.input)
     await app.start()
-    const launched = app.seen.length
 
+    // Confirm the offer the launch check found, so the remaining rows exercise the staged-update paths.
+    if (row.stage) await app.download()
+    const launched = app.seen.length
     await row.input.checks.slice(1).reduce<Promise<unknown>>((chain) => chain.then(app.check), Promise.resolve())
 
     expect(app.calls).toEqual([...row.calls])
@@ -183,7 +215,65 @@ describe("updater", () => {
     expect(app.seen.slice(launched)).toEqual([...row.rechecks])
   })
 
-  // After launch staged 2.0.0, a click shows it installing at once; `then` is a second action right after the click.
+  test.each([
+    {
+      name: "pressing download stages the offered release once",
+      then: undefined,
+      calls: ["check", "download"],
+    },
+    {
+      name: "pressing download twice stages once",
+      then: "download",
+      calls: ["check", "download"],
+    },
+    {
+      name: "a check after staging refreshes without downloading again",
+      then: "check",
+      calls: ["check", "download", "check"],
+    },
+  ])("$name", async (row) => {
+    const app = await setup()
+    await app.start()
+    await app.download()
+
+    if (row.then === "download") await app.download()
+
+    if (row.then === "check") await app.check()
+
+    expect(app.calls).toEqual([...row.calls])
+    expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
+    expect(app.getReady()).toEqual({ version: "2.0.0" })
+  })
+
+  test("a check while the download is in flight waits for it instead of downloading again", async () => {
+    const staging = Promise.withResolvers<void>()
+    const app = await setup({ stage: () => staging.promise })
+    await app.start()
+
+    const download = app.download()
+    await tick()
+    expect(app.state()).toEqual({ status: "downloading", version: "2.0.0" })
+
+    const check = app.check()
+    await tick()
+    expect(app.calls).toEqual(["check", "download"])
+
+    staging.resolve()
+    await Promise.all([download, check])
+    expect(app.calls).toEqual(["check", "download"])
+    expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
+  })
+
+  test("download after staging is a no-op", async () => {
+    const app = await setup()
+    await app.start()
+    await app.download()
+
+    expect(await app.download()).toEqual({ status: "ready", version: "2.0.0" })
+    expect(app.calls).toEqual(["check", "download"])
+  })
+
+  // After the download staged 2.0.0, a click shows it installing at once; `then` is a second action right after it.
   test.each([
     {
       name: "clicking install twice checks once and installs the staged version once",
@@ -216,6 +306,7 @@ describe("updater", () => {
   ])("$name", async (row) => {
     const app = await setup({ checks: row.checks })
     await app.start()
+    await app.download()
 
     app.installFork()
     expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
@@ -256,12 +347,16 @@ describe("updater", () => {
     expect(app.state()).toEqual({ status: "download-required", version: "2.0.0" })
   })
 
-  test("concurrent checks share one platform check", async () => {
-    const app = await setup()
+  test("concurrent checks share one platform check and download nothing", async () => {
+    const gate = Promise.withResolvers<void>()
+    const app = await setup({ gate: () => gate.promise })
 
-    await Promise.all([app.check(), app.check(), app.check()])
+    const checks = Promise.all([app.check(), app.check(), app.check()])
+    await tick()
+    gate.resolve()
+    await checks
 
-    expect(app.calls).toEqual(["check", "download"])
+    expect(app.calls).toEqual(["check"])
   })
 
   test("install during a silent refresh waits for the download, then installs the newer version", async () => {
@@ -273,6 +368,7 @@ describe("updater", () => {
     })
 
     await app.start()
+    await app.download()
 
     download.slow = true
     const refresh = app.check()
@@ -301,6 +397,7 @@ describe("updater", () => {
     })
 
     await app.start()
+    await app.download()
 
     await expect(app.install()).rejects.toThrow("install failed")
     expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })

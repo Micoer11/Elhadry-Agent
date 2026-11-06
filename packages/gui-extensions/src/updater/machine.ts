@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, Fiber } from "effect"
+import { Deferred, Effect, Exit, Fiber, Match } from "effect"
 import type { UpdaterState } from "./contract"
 
 export type UpdateTarget =
@@ -60,9 +60,11 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
       yield* dependencies.persistence.set({ version })
     })
 
-  const findAndStage = (platform: Platform) =>
+  // Checking only reports what is available. The download starts when the user confirms it, so a new release
+  // never costs bandwidth on an unattended background check.
+  const findUpdate = (platform: Platform, options: { silent?: boolean } = {}) =>
     Effect.gen(function* () {
-      yield* Effect.sync(() => transition({ status: "checking" }))
+      if (!options.silent) yield* Effect.sync(() => transition({ status: "checking" }))
       const next = yield* platform.checkForUpdate
 
       if (!next || (next.mode === "restart" && next.version === dependencies.currentVersion)) {
@@ -79,10 +81,10 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
         return transition({ status: "download-required", version: next.version })
       }
 
-      transition({ status: "downloading", version: next.version })
-      yield* stage(platform, next.version)
+      // A silent refresh exits without publishing the same offer again, so idle re-checks cost no renderer traffic.
+      if (options.silent && state.status === "available" && state.version === next.version) return state
 
-      return transition({ status: "ready", version: next.version })
+      return transition({ status: "available", version: next.version })
     }).pipe(
       Effect.catch((error) =>
         Effect.sync(() =>
@@ -147,6 +149,35 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
       ),
     )
 
+  const download = Effect.suspend(() => {
+    const platform = dependencies.platform
+
+    if (!platform) return Effect.fail(new Error("Updates are unavailable"))
+
+    if (state.status !== "available") return Effect.succeed(state)
+
+    if (pending) return Deferred.await(pending)
+
+    const version = state.version
+    const deferred = Deferred.makeUnsafe<UpdaterState>()
+    pending = deferred
+
+    return Effect.gen(function* () {
+      transition({ status: "downloading", version })
+      yield* stage(platform, version)
+
+      return transition({ status: installing ? "installing" : "ready", version })
+    }).pipe(
+      Effect.catch((error) =>
+        Effect.sync(() =>
+          transition({ status: "error", message: error instanceof Error ? error.message : String(error) }),
+        ),
+      ),
+      Effect.tap((result) => Deferred.succeed(deferred, result)),
+      Effect.ensuring(Effect.sync(() => (pending = undefined))),
+    )
+  })
+
   const check = Effect.suspend(() => {
     const platform = dependencies.platform
 
@@ -156,12 +187,11 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
     const deferred = Deferred.makeUnsafe<UpdaterState>()
     pending = deferred
 
-    const update =
-      state.status === "ready"
-        ? refreshStaged(platform, state.version)
-        : state.status === "download-required"
-          ? refreshExternal(platform)
-          : findAndStage(platform)
+    const update = Match.value(state).pipe(
+      Match.when({ status: "ready" }, (staged) => refreshStaged(platform, staged.version)),
+      Match.when({ status: "download-required" }, () => refreshExternal(platform)),
+      Match.orElse(() => findUpdate(platform, { silent: state.status === "available" })),
+    )
 
     return update.pipe(
       Effect.tap((result) => Deferred.succeed(deferred, result)),
@@ -242,19 +272,27 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
 
     if (ready?.version === dependencies.currentVersion) yield* dependencies.persistence.clear
 
-    // Any other persisted target was downloaded by an earlier launch and never installed, so its blockmap is cached.
-    if (ready && ready.version !== dependencies.currentVersion) downloaded = ready.version
+    // A staged release survives a restart, so the cache may already hold it. Remember which blockmap it belongs to and
+    // re-stage it below: a cache cleared since the download is repaired before the user clicks install, and
+    // electron-updater reuses the cached installer instead of patching a stale one.
+    const staged = ready && ready.version !== dependencies.currentVersion ? ready.version : undefined
+
+    if (staged) downloaded = staged
+
     yield* check
+
+    if (staged && state.status === "available" && state.version === staged) yield* download
   })
 
   const starting = yield* start.pipe(Effect.forkScoped)
   yield* Effect.gen(function* () {
-    yield* Effect.sleep("10 minutes")
+    yield* Effect.sleep("30 minutes")
     yield* check
   }).pipe(Effect.forever, Effect.forkScoped)
 
   return {
     check,
+    download,
     install,
     state: () => state,
     started: Fiber.join(starting).pipe(Effect.orDie),

@@ -5,6 +5,7 @@ export const UpdaterState = Schema.Union([
   Schema.Struct({ status: Schema.Literal("disabled") }),
   Schema.Struct({ status: Schema.Literal("idle") }),
   Schema.Struct({ status: Schema.Literal("checking") }),
+  Schema.Struct({ status: Schema.Literal("available"), version: Schema.String }),
   Schema.Struct({ status: Schema.Literal("downloading"), version: Schema.String }),
   Schema.Struct({ status: Schema.Literal("ready"), version: Schema.String }),
   Schema.Struct({ status: Schema.Literal("download-required"), version: Schema.String }),
@@ -21,6 +22,8 @@ export const Updater = Ipc.define({
   state: UpdaterState,
   methods: {
     check: { output: UpdaterState },
+    /** Downloads the release offered in the `available` state. */
+    download: { output: UpdaterState },
     /** Restarts into a staged update, or opens the installer download. */
     install: {},
   },

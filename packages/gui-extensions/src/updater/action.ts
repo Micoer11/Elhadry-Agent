@@ -9,6 +9,8 @@ export function updaterAction(state: UpdaterState | undefined) {
       return { label: "action.checking" as const }
     case "downloading":
       return { label: "action.downloading" as const }
+    case "available":
+      return { label: "action.download", run: "download" as const }
     case "ready":
       return { label: "action.installRestart" as const, run: "install" as const }
     case "download-required":

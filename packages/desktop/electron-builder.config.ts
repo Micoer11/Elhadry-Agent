@@ -275,7 +275,17 @@ export function getConfig() {
         appId,
         productName: "Elhadry Agent",
         protocols: { name: "Elhadry Agent", schemes: ["elhadry"] },
-        // No publish provider: this fork ships without auto-update.
+        // The source repository is private, so releases are mirrored to a public repository that serves both the
+        // manual download links and the update feed. A generic provider reads `latest.yml` and the `.blockmap`
+        // directly from the latest release, which avoids the unauthenticated GitHub API rate limit that the
+        // github provider would spend one request per launch against.
+        publish: [
+          {
+            provider: "generic",
+            url: "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download",
+            channel: "latest",
+          },
+        ],
         deb: { fpm: [metainfoFpm(appId)] },
         rpm: { packageName: "elhadry", fpm: [rpmNoBuildIdLinksFpm, metainfoFpm(appId)] },
       }

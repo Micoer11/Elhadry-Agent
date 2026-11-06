@@ -6,7 +6,8 @@ import { AppProcess } from "@elhadry/util/process"
 import { expect, spyOn, test } from "bun:test"
 import { Effect, FileSystem, Layer, PlatformError, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { Updater } from "../src/services/updater"
 import { testEffect } from "../../core/test/lib/effect"
@@ -15,13 +16,16 @@ const it = testEffect(NodeServices.layer)
 
 declare const OPENCODE_CLI_NAME: string | undefined
 
+// The published CLI image is a real file, so the digest check runs against the fixture's bytes.
+const cliImage = "elhadry-cli-binary"
+const cliDigest = createHash("sha256").update(cliImage).digest("hex")
+
 function fixture(
   respond: (command: ChildProcess.StandardCommand) => Partial<AppProcess.RunResult> & {
     error?: AppProcess.AppProcessError
   } = () => ({}),
   name = "@elhadry/cli",
   failCleanup = false,
-  releasePackage = name,
   formula?: string,
   executableOverride?: (root: string, home: string) => Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem>,
 ) {
@@ -53,7 +57,15 @@ function fixture(
               const url = input instanceof Request ? input.url : input.toString()
               requests.push(url)
               if (new URL(url).hostname === "formulae.brew.sh") return Response.json({ versions: { stable: "2.0.21" } })
-              return Response.json({ version: "2.3.4", metadata: { package: releasePackage } })
+              return Response.json({
+                version: "2.3.4",
+                tag: "v2.3.4",
+                platforms: {
+                  "windows-x64": {
+                    "elhadry-cli-windows-x64.exe": { sha256: cliDigest, size: cliImage.length },
+                  },
+                },
+              })
             },
             { preconnect: fetch.preconnect },
           ),
@@ -157,14 +169,6 @@ installs.forEach(({ method, command }) => {
   )
 })
 
-it.live("vp force-installs a renamed V2 package that replaces the existing binary owner", () =>
-  Effect.gen(function* () {
-    const test = yield* fixture(() => ({}), "@elhadry/cli", false, "@elhadry/cli-node")
-    yield* test.updater.upgrade("vp", "v2.3.4-beta.1")
-    expect(test.commands).toEqual([["vp", "install", "-g", "--force", "@elhadry/cli-node@2.3.4-beta.1"]])
-  }),
-)
-
 it.live("vp removes the package from its managed global store", () =>
   Effect.gen(function* () {
     const test = yield* fixture()
@@ -203,31 +207,44 @@ it.live("bun ignores install cache cleanup failures", () =>
     expect(test.commands).toHaveLength(1)
   }),
 )
-;["success", "download", "install"].forEach((failure) => {
-  it.live(`curl uses the V2 installer and cleans its directory: ${failure}`, () =>
+;["success", "corrupt", "download"].forEach((failure) => {
+  windows(`curl downloads and replaces the running binary: ${failure}`, () =>
     Effect.gen(function* () {
-      const test = yield* fixture((command) => {
-        const installer = command.command === "curl" ? command.args[2] : command.args[0]
-        expect(existsSync(path.dirname(installer))).toBe(true)
-        return {
-          exitCode:
-            path.basename(command.command, ".exe") ===
-            (failure === "download" ? "curl" : failure === "install" ? "bash" : "")
-              ? 1
-              : 0,
-          stderr: Buffer.from(`${failure} failed`),
-        }
-      })
+      const test = yield* fixture(
+        (command) => {
+          const image = command.command === "curl" ? command.args[2] : ""
+          if (!image) return { exitCode: 1, stderr: Buffer.from("unexpected command") }
+          expect(existsSync(path.dirname(image))).toBe(true)
+          if (failure !== "download") writeFileSync(image, failure === "corrupt" ? "tampered" : cliImage)
+          return {
+            exitCode: failure === "download" ? 1 : 0,
+            stderr: Buffer.from(`${failure} failed`),
+          }
+        },
+        "@elhadry/cli",
+        false,
+        undefined,
+        (_root, home) => Effect.succeed(path.join(home, ".elhadry", "bin", "elhadry.exe")),
+      )
       const result = yield* test.updater.upgrade("curl", "v2.3.4-beta.1").pipe(Effect.flip, Effect.option)
-      const installer = test.commands[0]?.[3]
-      expect(installer).toStartWith(path.join(test.global.cache, "update-"))
+      const image = test.commands[0]?.[3]
+      expect(image).toStartWith(path.join(test.global.cache, "update-"))
       expect(test.commands).toEqual([
-        ["curl", "-fsSL", "-o", installer, "https://elhadry.ai/v2/install"],
-        ...(failure === "download" ? [] : [[test.bash, installer, "--version", "2.3.4-beta.1", "--no-modify-path"]]),
+        [
+          "curl",
+          "-fsSL",
+          "-o",
+          image,
+          "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/download/v2.3.4/elhadry-cli-windows-x64.exe",
+        ],
       ])
       expect(yield* test.fs.readDirectory(test.global.cache)).toEqual([])
+      expect(yield* test.fs.readFileString(test.executable)).toBe(failure === "success" ? cliImage : "binary")
       expect(result._tag).toBe(failure === "success" ? "None" : "Some")
-      if (result._tag === "Some") expect(result.value.message).toBe(`${failure} failed`)
+      if (result._tag === "Some")
+        expect(result.value.message).toBe(
+          failure === "download" ? "download failed" : `The download hashed to ${createHash("sha256").update("tampered").digest("hex")} instead of ${cliDigest}.`,
+        )
     }),
   )
 })
@@ -311,7 +328,7 @@ it.live("vp detection ignores no-match output that repeats the package name", ()
 
 it.live("Homebrew Core installs check and upgrade the Core formula", () =>
   Effect.gen(function* () {
-    const test = yield* fixture(() => ({}), "@elhadry/cli", false, "anomalyco/tap/elhadry-v2", "elhadry")
+    const test = yield* fixture(() => ({}), "@elhadry/cli", false, "elhadry")
     expect(yield* test.updater.method()).toBe("brew")
     expect(yield* test.updater.latest()).toBe("2.0.21")
     yield* test.updater.upgrade("brew", "2.0.21")
@@ -320,21 +337,21 @@ it.live("Homebrew Core installs check and upgrade the Core formula", () =>
     expect(yield* test.updater.latest("npm")).toBe("2.3.4")
     expect(test.requests).toEqual([
       "https://formulae.brew.sh/api/formula/elhadry.json",
-      "https://elhadry.ai/update/api/local/cli/npm?current=local",
+      "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
     ])
   }),
 )
 ;["elhadry-v2", "elhadry-beta"].forEach((formula) => {
   it.live(`Homebrew tap installs of ${formula} use the published tap formula`, () =>
     Effect.gen(function* () {
-      const test = yield* fixture(() => ({}), "@elhadry/cli", false, `anomalyco/tap/${formula}`, formula)
+      const test = yield* fixture(() => ({}), "@elhadry/cli", false, formula)
       expect(yield* test.updater.method()).toBe("brew")
       expect(yield* test.updater.latest()).toBe("2.3.4")
       yield* test.updater.upgrade("brew", "2.3.4")
-      expect(test.commands).toEqual([["brew", "upgrade", `anomalyco/tap/${formula}`]])
+      expect(test.commands).toEqual([["brew", "upgrade", `Micoer11/tap/${formula}`]])
       expect(test.requests).toEqual([
-        "https://elhadry.ai/update/api/local/cli/homebrew?current=local",
-        "https://elhadry.ai/update/api/local/cli/homebrew?current=local",
+        "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
+        "https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/version.json",
       ])
     }),
   )
@@ -345,7 +362,6 @@ const winget = (search: Partial<AppProcess.RunResult>) =>
     (command) => (command.args[0] === "search" ? search : {}),
     "@elhadry/cli",
     false,
-    "@elhadry/cli",
     undefined,
     (root) =>
       Effect.succeed(
@@ -468,43 +484,12 @@ windows("windows keeps the uninstall link in the temporary directory, not the re
   }),
 )
 
-windows("windows links the curl binary before the installer replaces it", () =>
-  Effect.gen(function* () {
-    const layout = { executable: "", cache: "" }
-    const test = yield* fixture(
-      (command) => {
-        if (path.basename(command.command, ".exe") === "bash") {
-          expect(readFileSync(layout.executable, "utf8")).toBe("binary")
-          expect(upgradeLinks(layout.cache)).toHaveLength(1)
-        }
-        return {}
-      },
-      "@elhadry/cli",
-      false,
-      "@elhadry/cli",
-      undefined,
-      (_root, home) => Effect.succeed(path.join(home, ".elhadry", "bin", "elhadry.exe")),
-    )
-    layout.executable = test.executable
-    layout.cache = test.global.cache
-    const original = process.execPath
-    process.execPath = layout.executable
-    yield* Effect.addFinalizer(() => Effect.sync(() => (process.execPath = original)))
-    expect(yield* test.updater.method()).toBe("curl")
-    yield* test.updater.upgrade("curl", "2.3.4")
-    expect(test.commands.map((command) => command[0])).toEqual(["curl", test.bash])
-    expect(yield* test.fs.readFileString(layout.executable)).toBe("binary")
-    expect(links(test.global.cache)).toEqual([])
-  }),
-)
-
 unix("curl method detection resolves symlinked home directories", () =>
   Effect.gen(function* () {
     const test = yield* fixture(
       () => ({}),
       "@elhadry/cli",
       false,
-      "@elhadry/cli",
       undefined,
       (root, home) =>
         Effect.gen(function* () {

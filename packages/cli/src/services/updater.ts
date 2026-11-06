@@ -5,6 +5,8 @@ import { OPENCODE_ARTIFACT, OPENCODE_CHANNEL, OPENCODE_LOCAL, OPENCODE_VERSION }
 import { Context, Duration, Effect, FileSystem, Layer, Option, Ref, Schema } from "effect"
 import { ChildProcess } from "effect/process"
 import { parse, type ParseError } from "jsonc-parser"
+import { createHash } from "node:crypto"
+import { createReadStream } from "node:fs"
 import path from "node:path"
 import { stripVTControlCharacters } from "node:util"
 import { RetainedImage } from "./retained-image"
@@ -12,6 +14,26 @@ import { action, parseReleaseVersion, type Policy } from "./updater-action"
 import { errorMessage } from "../util/error"
 
 export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew", "winget"] as const
+
+// The source repository is private, so the workflow mirrors every build to this public repository. It serves the
+// manual download links and the update feed alike.
+const releasesRepository = "Micoer11/Elhadry-Agent-Releases"
+const releases = `https://github.com/${releasesRepository}/releases`
+// Only the Windows CLI is published today; an ARM64 Windows machine runs this x64 build under emulation.
+const cliAsset = "elhadry-cli-windows-x64.exe"
+
+const ReleaseManifest = Schema.Struct({
+  version: Schema.String,
+  tag: Schema.String,
+  platforms: Schema.Record(
+    Schema.String,
+    Schema.Record(Schema.String, Schema.Struct({ sha256: Schema.String, size: Schema.Number })),
+  ),
+})
+
+type ReleaseManifest = typeof ReleaseManifest.Type
+
+const decodeReleaseManifest = Schema.decodeUnknownOption(Schema.fromJsonString(ReleaseManifest))
 
 export type Method = (typeof methods)[number]
 export type RunResult = { readonly type: "available" | "installed"; readonly version: string }
@@ -57,6 +79,8 @@ const installNames: Record<Method, string> = {
 }
 
 const wingetPackage = "Elhadry.Agent"
+// A tap install upgrades through its fully qualified formula; this fork publishes its own tap when it has one.
+const homebrewTap = "Micoer11/tap"
 const wingetArgs = [
   "--id",
   wingetPackage,
@@ -142,7 +166,6 @@ const make = Effect.gen(function* () {
   const appProcess = yield* AppProcess.Service
   const flock = yield* EffectFlock.Service
   const installedVersion = yield* Ref.make(OPENCODE_VERSION)
-  const channel = OPENCODE_CHANNEL.replace(/[^a-zA-Z0-9._-]/g, "-")
   const executable = yield* fs.realPath(process.execPath).pipe(Effect.orElseSucceed(() => process.execPath))
   const installedPackage = yield* Effect.gen(function* () {
     const directory = path.dirname(path.dirname(executable))
@@ -194,22 +217,6 @@ const make = Effect.gen(function* () {
     process.platform === "win32" ? "elhadry.exe" : "elhadry",
   )
   const curlBinary = yield* fs.realPath(curlPath).pipe(Effect.orElseSucceed(() => curlPath))
-
-  // On Windows a bare `bash` may be the WSL launcher, which cannot run the installer against Windows paths.
-  const installerBash = Effect.fnUntraced(function* () {
-    if (process.platform !== "win32") return "bash"
-    if (process.env.OPENCODE_GIT_BASH_PATH) return process.env.OPENCODE_GIT_BASH_PATH
-    const git = yield* exec(["git", "--exec-path"]).pipe(Effect.orElseSucceed(() => undefined))
-    const bash = git?.code === 0 ? path.resolve(git.stdout.trim(), "..", "..", "..", "bin", "bash.exe") : undefined
-    if (bash && (yield* fs.exists(bash).pipe(Effect.orElseSucceed(() => false)))) return bash
-    return yield* Effect.fail(
-      new UpgradeError({
-        title: "Git Bash is required to update Elhadry Agent",
-        detail: "The Elhadry Agent installer runs with Git Bash on Windows, and it was not found.",
-        retry: "Install Git for Windows or set OPENCODE_GIT_BASH_PATH, then run elhadry upgrade again.",
-      }),
-    )
-  })
 
   const method = Effect.fnUntraced(function* () {
     if (executable === curlBinary) return "curl"
@@ -272,40 +279,79 @@ const make = Effect.gen(function* () {
     }
   }
 
-  const release = Effect.fnUntraced(function* (method?: Method) {
-    const distribution = method === "brew" ? "homebrew" : "npm"
-    // Homebrew Core builds its formula on its own schedule, so the tap release does not describe it.
-    const core = method === "brew" && installedFormula === "elhadry"
+  // The update server this fork inherited does not exist, so releases come from the public mirror's manifest. It is
+  // the same file the desktop updater and the download links use, which keeps every edition on one version.
+  const manifest = Effect.fnUntraced(function* (version?: string) {
+    const title = "Could not check for Elhadry Agent updates"
+    const url = version
+      ? `${releases}/download/v${encodeURIComponent(version)}/version.json`
+      : `${releases}/latest/download/version.json`
     const response = yield* Effect.tryPromise({
-      try: (signal) =>
-        fetch(
-          core
-            ? "https://formulae.brew.sh/api/formula/elhadry.json"
-            : `https://elhadry.ai/update/api/${encodeURIComponent(channel)}/${encodeURIComponent(OPENCODE_ARTIFACT)}/${distribution}?current=${encodeURIComponent(OPENCODE_VERSION)}`,
-          {
-            signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
-          },
-        ),
+      try: (signal) => fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) }),
       catch: (cause) =>
         new UpgradeError(
-          {
-            title: "Could not check for Elhadry Agent updates",
-            detail: errorDetail(cause),
-            retry: "Check your network, then run elhadry upgrade again.",
-          },
+          { title, detail: errorDetail(cause), retry: "Check your network, then run elhadry upgrade again." },
           { cause },
         ),
     })
     if (!response.ok)
       return yield* Effect.fail(
         new UpgradeError({
-          title: "Could not check for Elhadry Agent updates",
-          detail: `The update service returned HTTP ${response.status}.`,
+          title,
+          detail:
+            response.status === 404
+              ? `Elhadry Agent ${version ?? "latest"} is not published yet.`
+              : `The release feed returned HTTP ${response.status}.`,
           retry: "Try again in a few minutes.",
         }),
       )
-    const data: { version?: string; metadata?: { package?: string }; versions?: { stable?: string } } =
-      yield* Effect.tryPromise({
+    const text = yield* Effect.tryPromise({
+      try: () => response.text(),
+      catch: (cause) =>
+        new UpgradeError(
+          { title: "Could not read the Elhadry Agent release information", detail: errorDetail(cause), retry: "Try again in a few minutes." },
+          { cause },
+        ),
+    })
+    const decoded = decodeReleaseManifest(text)
+    if (Option.isNone(decoded))
+      return yield* Effect.fail(
+        new UpgradeError({
+          title: "Could not read the Elhadry Agent release information",
+          detail: "The release feed returned an unexpected document.",
+          retry: "Try again in a few minutes.",
+        }),
+      )
+    return decoded.value
+  })
+
+  const release = Effect.fnUntraced(function* (method?: Method) {
+    // Homebrew Core builds its formula on its own schedule, so the tap release does not describe it.
+    if (method === "brew" && installedFormula === "elhadry") {
+      const response = yield* Effect.tryPromise({
+        try: (signal) =>
+          fetch("https://formulae.brew.sh/api/formula/elhadry.json", {
+            signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+          }),
+        catch: (cause) =>
+          new UpgradeError(
+            {
+              title: "Could not check for Elhadry Agent updates",
+              detail: errorDetail(cause),
+              retry: "Check your network, then run elhadry upgrade again.",
+            },
+            { cause },
+          ),
+      })
+      if (!response.ok)
+        return yield* Effect.fail(
+          new UpgradeError({
+            title: "Could not check for Elhadry Agent updates",
+            detail: `The update service returned HTTP ${response.status}.`,
+            retry: "Try again in a few minutes.",
+          }),
+        )
+      const data: { versions?: { stable?: string } } = yield* Effect.tryPromise({
         try: () => response.json(),
         catch: (cause) =>
           new UpgradeError(
@@ -317,17 +363,40 @@ const make = Effect.gen(function* () {
             { cause },
           ),
       })
-    const version = core ? data.versions?.stable : data.version
-    const packageName = core ? "elhadry" : data.metadata?.package
-    if (!version || !packageName)
+      if (!data.versions?.stable)
+        return yield* Effect.fail(
+          new UpgradeError({
+            title: "Could not read the Elhadry Agent update information",
+            detail: "The update service returned incomplete release information.",
+            retry: "Try again in a few minutes.",
+          }),
+        )
+      return { package: "elhadry", version: data.versions.stable }
+    }
+
+    const feed = yield* manifest()
+    return {
+      package: installedFormula
+        ? `${homebrewTap}/${installedFormula}`
+        : (installedPackage ?? (OPENCODE_ARTIFACT === "cli-node" ? "@elhadry/cli-node" : "@elhadry/cli")),
+      version: feed.version,
+    }
+  })
+
+  // The CLI installer this fork inherited pointed at the retired update host. Replace the running image with the
+  // published binary instead, which needs no shell and no installer script.
+  const cliDownload = Effect.fnUntraced(function* (version: string) {
+    const feed: ReleaseManifest = yield* manifest(version)
+    const asset = feed.platforms["windows-x64"]?.[cliAsset]
+    if (!asset)
       return yield* Effect.fail(
         new UpgradeError({
-          title: "Could not read the Elhadry Agent update information",
-          detail: "The update service returned incomplete release information.",
-          retry: "Try again in a few minutes.",
+          title: "Could not find the Elhadry Agent CLI download",
+          detail: `Version ${version} does not publish ${cliAsset}.`,
+          retry: "Download the latest release from the releases page.",
         }),
       )
-    return { package: packageName, version }
+    return { url: `${releases}/download/${encodeURIComponent(feed.tag)}/${cliAsset}`, sha256: asset.sha256 }
   })
 
   // WinGet moderates every submission, so only its own index knows which release it can install.
@@ -370,6 +439,27 @@ const make = Effect.gen(function* () {
       fs.remove(directory, { recursive: true, force: true }).pipe(Effect.ignore),
     )
 
+  // A corrupt or truncated download must never replace a working binary, so the release manifest's digest is checked
+  // before the swap. Stream it: the CLI image is a few hundred megabytes.
+  const sha256 = Effect.fnUntraced(function* (file: string) {
+    const hash = createHash("sha256")
+    yield* Effect.tryPromise({
+      try: async () => {
+        for await (const chunk of createReadStream(file)) hash.update(chunk)
+      },
+      catch: (cause) =>
+        new UpgradeError(
+          {
+            title: "Could not read the downloaded Elhadry Agent update",
+            detail: errorDetail(cause),
+            retry: "Run elhadry upgrade again.",
+          },
+          { cause },
+        ),
+    })
+    return hash.digest("hex")
+  })
+
   // On Windows the installer must delete or replace the running binary, which only works
   // while another link to it exists (see RetainedImage). Upgrades keep that link in the
   // cache; uninstall has already removed the cache, so it uses the temporary directory.
@@ -394,6 +484,7 @@ const make = Effect.gen(function* () {
     readonly displayCommand?: string[]
     readonly title?: string
     readonly retry?: string
+    readonly timeout?: Duration.Input
   }) => {
     const failure = (detail: string, cause?: unknown) =>
       new UpgradeError(
@@ -405,7 +496,7 @@ const make = Effect.gen(function* () {
         },
         cause === undefined ? undefined : { cause },
       )
-    return exec(input.command, "5 minutes").pipe(
+    return exec(input.command, input.timeout ?? "5 minutes").pipe(
       Effect.flatMap((result) =>
         result.code === 0 ? Effect.succeed(result) : Effect.fail(failure(resultDetail(result))),
       ),
@@ -473,24 +564,44 @@ const make = Effect.gen(function* () {
           )
         }
         if (method === "curl") {
-          const bash = yield* installerBash()
+          if (process.platform !== "win32")
+            return yield* Effect.fail(
+              new UpgradeError({
+                title: "Elhadry Agent has no CLI build for this platform yet",
+                detail: "Only the Windows build is published, so this installation cannot update itself.",
+                retry: "Download the latest release for Windows, or check back when this platform is published.",
+              }),
+            )
           yield* fs.makeDirectory(global.cache, { recursive: true })
           const directory = yield* temporaryDirectory("update-")
-          const installer = path.join(directory, "install")
+          const image = path.join(directory, "elhadry.exe")
+          const download = yield* cliDownload(version)
           yield* runUpgrade({
             method,
-            command: ["curl", "-fsSL", "-o", installer, "https://elhadry.ai/v2/install"],
-            displayCommand: ["curl", "-fsSL", "https://elhadry.ai/v2/install"],
-            title: "Could not download the Elhadry Agent installer",
+            command: ["curl", "-fsSL", "-o", image, download.url],
+            displayCommand: ["curl", "-fsSL", download.url],
+            title: "Could not download the Elhadry Agent update",
             retry: "Check your network, then run elhadry upgrade again.",
+            timeout: "15 minutes",
           })
+          const digest = yield* sha256(image)
+          if (digest !== download.sha256)
+            return yield* Effect.fail(
+              new UpgradeError({
+                title: "The Elhadry Agent download was corrupt",
+                detail: `The download hashed to ${digest} instead of ${download.sha256}.`,
+                retry: "Run elhadry upgrade again.",
+              }),
+            )
+          // A retained second link lets Windows drop the running image. Without one, rename it first: renaming a
+          // running executable is allowed even when deleting it is not.
           return yield* retaining(
             method,
-            runUpgrade({
-              method,
-              command: [bash, installer, "--version", version, "--no-modify-path"],
-              displayCommand: ["elhadry", "upgrade", version, "--method", "curl"],
-              title: "The Elhadry Agent installer failed",
+            Effect.gen(function* () {
+              const replaced = yield* fs.remove(curlBinary).pipe(Effect.as(true), Effect.orElseSucceed(() => false))
+              if (!replaced) yield* fs.rename(curlBinary, `${curlBinary}.old`)
+              yield* fs.copy(image, curlBinary)
+              if (!replaced) yield* fs.remove(`${curlBinary}.old`).pipe(Effect.ignore)
             }),
           )
         }

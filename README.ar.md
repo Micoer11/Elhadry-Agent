@@ -16,7 +16,7 @@
 ## التنزيل
 
 كل إصدار يتم بناؤه تلقائياً على GitHub ونشره في
-[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent/releases/latest).
+[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest).
 لا تحتاج إلى بناء أي شيء على جهازك.
 
 | الملف                          | الاسم                              |
@@ -28,9 +28,9 @@
 
 هذه الروابط تشير دائماً إلى أحدث إصدار:
 
-- المثبّت: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.exe`
-- المحمول: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-desktop-windows-x64.zip`
-- سطر الأوامر: `https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe`
+- المثبّت: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-desktop-windows-x64.exe`
+- المحمول: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-desktop-windows-x64.zip`
+- سطر الأوامر: `https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-cli-windows-x64.exe`
 
 ### أول تشغيل على ويندوز
 
@@ -46,7 +46,7 @@
 افتح PowerShell ونزّل الأداة:
 
 ```powershell
-curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent/releases/latest/download/elhadry-cli-windows-x64.exe
+curl.exe -L -o "$env:LOCALAPPDATA\elhadry.exe" https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest/download/elhadry-cli-windows-x64.exe
 & "$env:LOCALAPPDATA\elhadry.exe" --version
 ```
 
@@ -59,10 +59,14 @@ cd C:\path\to\your\project
 
 ## التحديثات
 
-يتحقق التطبيق من ملف `version.json` في أحدث إصدار ويخبرك عند توفر نسخة جديدة.
-للتحديث يدوياً، نزّل أحدث مثبّت من
-[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent/releases/latest) وشغّله؛
-إعداداتك ومحادثاتك تبقى كما هي.
+يتحدّث Elhadry Agent تلقائياً. يتحقق من أحدث إصدار عند التشغيل ثم كل 30 دقيقة،
+ويعرض زر **تنزيل Elhadry Agent** في الشريط الجانبي فوق الإعدادات عند توفر نسخة
+أحدث. لا يبدأ التنزيل إلا بعد تأكيدك، وينزّل الأجزاء التي تغيّرت فقط إن أمكن.
+بعد التنزيل، ثبّت وأعد التشغيل من الزر نفسه؛ إعداداتك ومحادثاتك تبقى كما هي.
+
+يمكنك أيضاً التحقق يدوياً من **الإعدادات ← التحديثات**، أو تنزيل أحدث مثبّت من
+[صفحة الإصدارات](https://github.com/Micoer11/Elhadry-Agent-Releases/releases/latest)
+وتشغيله.
 
 كل إصدار يحتفظ بملفاته، لذلك يمكنك تنزيل أي إصدار أقدم وتثبيته في أي وقت.
 

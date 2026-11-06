@@ -124,6 +124,11 @@ jobs:
       - name: List packages
         working-directory: packages/desktop
         run: ls -la dist
+      - name: Verify update metadata
+        working-directory: packages/desktop
+        run: |
+          test -s dist/latest.yml
+          ls dist/*.blockmap
       - name: Upload desktop
         uses: actions/upload-artifact@v5
         with:
@@ -131,6 +136,8 @@ jobs:
           path: |
             packages/desktop/dist/*.exe
             packages/desktop/dist/*.zip
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/latest.yml
           if-no-files-found: error
           retention-days: 7
 
@@ -138,6 +145,8 @@ jobs:
     needs: [version, cli-windows, desktop-windows]
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
+    env:
+      RELEASES_REPOSITORY: Micoer11/Elhadry-Agent-Releases
     steps:
       - name: Download desktop
         uses: actions/download-artifact@v5
@@ -165,6 +174,8 @@ jobs:
 
           version = os.environ["VERSION"]
           tag = os.environ["TAG"]
+          # What's New reads this after an update. It stays empty until a release has desktop highlights to show.
+          pathlib.Path("changelog.json").write_text("[]\n")
           assets = {}
           for path in sorted(pathlib.Path(".").iterdir()):
               if not path.is_file():
@@ -174,13 +185,13 @@ jobs:
           manifest = {
               "version": version,
               "tag": tag,
-              "repository": "Micoer11/Elhadry-Agent",
+              "repository": os.environ["RELEASES_REPOSITORY"],
               "platforms": {"windows-x64": assets},
           }
           pathlib.Path("version.json").write_text(json.dumps(manifest, indent=2) + "\n")
           print(json.dumps(manifest, indent=2))
           PY
-      - name: Publish release
+      - name: Publish source release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
@@ -189,6 +200,20 @@ jobs:
           gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
+            --title "Elhadry Agent $VERSION" \
+            --notes "Elhadry Agent $VERSION for Windows." \
+            assets/*
+      # The source repository is private, so end users and the updater read the same assets from this public mirror.
+      - name: Publish update feed
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh release delete "$TAG" --repo "$RELEASES_REPOSITORY" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            --repo "$RELEASES_REPOSITORY" \
+            --latest \
             --title "Elhadry Agent $VERSION" \
             --notes "Elhadry Agent $VERSION for Windows." \
             assets/*

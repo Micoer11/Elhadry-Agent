@@ -12,8 +12,8 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
   const build = ctx.build
   const lifecycle = ctx.lifecycle
   // electron-updater reads its release feed from app-update.yml, which electron-builder only emits when the
-  // build defines a publish provider. This fork ships without one, so there is nothing to check or install
-  // and the update UI stays out of the way instead of failing on every check.
+  // build defines a publish provider. Without one there is nothing to check or install and the update UI stays
+  // out of the way instead of failing on every check.
   const enabled = build.packaged && build.channel !== "dev" && existsSync(join(process.resourcesPath, "app-update.yml"))
   // Holds no resources, so it needs no cleanup.
   const context = logContext(ctx.log.write)
@@ -53,6 +53,7 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
   const provider = ctx.provide(Updater, {
     state: () => updater.state(),
     check: () => runPromise(updater.check),
+    download: () => runPromise(updater.download),
     install: () => runPromise(updater.install),
   })
 
@@ -81,6 +82,23 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
           title: ctx.t("dialog.upToDate.title"),
         }),
       )
+
+      return
+    }
+
+    if (state.status === "available") {
+      const response = yield* promise(() =>
+        dialog.showMessageBox({
+          type: "info",
+          message: ctx.t("dialog.available.message", { version: state.version }),
+          title: ctx.t("dialog.available.title"),
+          buttons: [ctx.t("dialog.download"), ctx.t("dialog.later")],
+          defaultId: 0,
+          cancelId: 1,
+        }),
+      )
+
+      if (response.response === 0) yield* updater.download
 
       return
     }
