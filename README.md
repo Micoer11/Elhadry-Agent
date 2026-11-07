@@ -66,7 +66,8 @@ starts only after you confirm it, and it fetches just the parts that changed
 when possible. Turn on **Install updates automatically** in **Settings →
 Updates** to download, install and restart as soon as a check finds an update.
 After the download, install and restart from the same button; your settings and
-chats are kept.
+chats are kept. Every download is checked before it is installed, and a damaged
+or partial file is fetched again automatically.
 
 You can also check by hand from **Settings → Updates**, which lists the newest
 published version and the four previous ones with a download button each, or
