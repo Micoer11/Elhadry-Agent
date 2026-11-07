@@ -32,22 +32,27 @@ const setup: Setup<typeof definition> = (ctx) => {
 
   ctx.add(TitlebarItem, () => {
     const current = state()
-    const installing = current?.status === "installing"
 
-    const offered =
-      current?.status === "available" ||
-      current?.status === "ready" ||
-      current?.status === "download-required"
+    if (!current) return
 
-    if (!offered && !installing) return
+    // The pill follows the whole update flow, so its label and title stay visible while it downloads too.
+    if (
+      current.status !== "available" &&
+      current.status !== "ready" &&
+      current.status !== "download-required" &&
+      current.status !== "downloading" &&
+      current.status !== "installing"
+    )
+      return
 
     const action = updaterAction(current)
+    const progress = current.status === "downloading" ? current.progress : undefined
 
     return {
       id: "update",
       label: ctx.t("status.label"),
-      title: ctx.t(action.label),
-      busy: installing,
+      title: progress === undefined ? ctx.t(action.label) : ctx.t("action.downloadingProgress", { progress }),
+      busy: current.status === "installing",
       run: action.run ? () => act(action.run) : undefined,
     }
   })
@@ -78,6 +83,7 @@ const setup: Setup<typeof definition> = (ctx) => {
 
             if (run) act(run)
           }}
+          check={() => act("check")}
         />
       </Suspense>
     ),

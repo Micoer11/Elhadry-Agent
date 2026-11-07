@@ -1,4 +1,4 @@
-import { createMemo, For, Show, type Accessor, type JSX } from "solid-js"
+import { createMemo, createSignal, For, Show, type Accessor, type JSX } from "solid-js"
 import { Button } from "@elhadry/ui/button"
 import { Switch } from "@elhadry/ui/switch"
 import { showToast } from "@elhadry/ui/toast"
@@ -13,11 +13,24 @@ type AutoClient = IpcClient<typeof AutoInstall.spec>
 export default function UpdatesSection(props: {
   state: () => UpdaterState | undefined
   autoInstall: Accessor<Live<AutoClient>>
+  /** Runs the action the latest-release card offers, such as download or install. */
   run: () => void
+  /** Always checks for updates; it never downloads or installs. */
+  check: () => void
 }) {
   const ctx = useExtension<typeof definition>()
   const releaseNotes = ctx.stores.releaseNotes
   const action = createMemo(() => updaterAction(props.state()))
+  const checking = () => props.state()?.status === "checking"
+
+  const checkDisabled = () => {
+    const status = props.state()?.status
+
+    return status === "checking" || status === "downloading" || status === "installing"
+  }
+
+  // Four versions at a time; each "Show more" reveals the next four.
+  const [visiblePrevious, setVisiblePrevious] = createSignal(4)
 
   // The published releases change only when a release ships, so the page reads them once and keeps the answer.
   const history = createLatest(ctx.uses.updater, (_client, signal) => fetchReleases(signal))
@@ -33,11 +46,13 @@ export default function UpdatesSection(props: {
   const latest = () => published()[0]
 
   // Older versions to go back to: everything below the newest release, without the version already installed.
-  const previous = () =>
+  const allPrevious = () =>
     published()
       .slice(1)
       .filter((release) => release.version !== ctx.build.version)
-      .slice(0, 4)
+
+  const previous = () => allPrevious().slice(0, visiblePrevious())
+  const hasMore = () => allPrevious().length > visiblePrevious()
 
   const latestTitle = () => {
     const current = props.state()
@@ -57,7 +72,9 @@ export default function UpdatesSection(props: {
       case "available":
         return ctx.t("latest.available", { version: current.version })
       case "downloading":
-        return ctx.t("latest.downloading", { version: current.version })
+        return current.progress === undefined
+          ? ctx.t("latest.downloading", { version: current.version })
+          : ctx.t("latest.downloadingProgress", { version: current.version, progress: current.progress })
       case "ready":
         return ctx.t("latest.ready", { version: current.version })
       case "installing":
@@ -151,10 +168,10 @@ export default function UpdatesSection(props: {
                 <Button
                   size="normal"
                   variant="neutral"
-                  disabled={!action().run}
-                  onClick={() => props.run()}
+                  disabled={checkDisabled()}
+                  onClick={() => props.check()}
                 >
-                  {ctx.t(action().label)}
+                  {ctx.t(checking() ? "action.checking" : "action.checkNow")}
                 </Button>
               </Row>
             </div>
@@ -188,6 +205,19 @@ export default function UpdatesSection(props: {
                   </div>
                 )}
               </For>
+              <Show when={hasMore()}>
+                <div data-action="settings-show-more-releases">
+                  <Row title={ctx.t("previous.showMore")} description={ctx.t("previous.showMoreDescription")}>
+                    <Button
+                      size="normal"
+                      variant="neutral"
+                      onClick={() => setVisiblePrevious((count) => count + 4)}
+                    >
+                      {ctx.t("previous.showMore")}
+                    </Button>
+                  </Row>
+                </div>
+              </Show>
             </div>
           </section>
         </Show>

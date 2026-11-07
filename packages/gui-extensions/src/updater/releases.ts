@@ -1,7 +1,7 @@
 import { Option, Schema } from "effect"
 
-/** The ten newest releases of the public repository; one page holds the latest and the versions below it. */
-export const RELEASES_API = "https://api.github.com/repos/Micoer11/Elhadry-Agent/releases?per_page=10"
+/** The newest releases of the public repository; one page holds the latest and every version below it. */
+export const RELEASES_API = "https://api.github.com/repos/Micoer11/Elhadry-Agent/releases?per_page=100"
 
 const Asset = Schema.Struct({
   name: Schema.String,

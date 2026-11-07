@@ -57,24 +57,21 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
   } satisfies Platform
 })
 
-function stageUpdate(options: { readonly differential: boolean }) {
+function stageUpdate(options: {
+  readonly differential: boolean
+  readonly onProgress?: (percent: number) => void
+}) {
+  // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
+  // blockmap embedded in the running file. An emulated x64 install updates to the ARM64 installer, which cannot be
+  // patched from the cached x64 one.
   if (process.platform !== "darwin")
-    return Effect.tryPromise({
-      try: () => {
-        // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
-        // blockmap embedded in the running file. An emulated x64 install updates to the ARM64 installer, which cannot
-        // be patched from the cached x64 one.
-        updateClient.disableDifferentialDownload =
-          process.platform === "win32" && (!options.differential || app.runningUnderARM64Translation)
-
-        return updateClient.downloadUpdate()
-      },
-      catch: (error) => error,
-    }).pipe(Effect.asVoid)
+    updateClient.disableDifferentialDownload =
+      process.platform === "win32" && (!options.differential || app.runningUnderARM64Translation)
 
   return Effect.callback<void, Error>((resume) => {
     const cleanup = () => {
       autoUpdater.removeListener("update-downloaded", complete)
+      updateClient.removeListener("download-progress", progress)
       updateClient.removeListener("error", fail)
     }
 
@@ -83,12 +80,15 @@ function stageUpdate(options: { readonly differential: boolean }) {
       resume(Effect.void)
     }
 
+    const progress = (info: { readonly percent: number }) => options.onProgress?.(info.percent)
+
     const fail = (error: Error) => {
       cleanup()
       resume(Effect.fail(error))
     }
 
     autoUpdater.once("update-downloaded", complete)
+    updateClient.on("download-progress", progress)
     updateClient.once("error", fail)
     void updateClient.downloadUpdate().catch(fail)
 

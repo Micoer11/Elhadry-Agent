@@ -7,7 +7,11 @@ export type UpdateTarget =
 
 export type Platform = {
   readonly checkForUpdate: Effect.Effect<UpdateTarget | undefined, unknown>
-  readonly stageUpdate: (options: { readonly differential: boolean }) => Effect.Effect<unknown, unknown>
+  readonly stageUpdate: (options: {
+    readonly differential: boolean
+    /** Receives whole-percent download progress while the installer downloads. */
+    readonly onProgress?: (percent: number) => void
+  }) => Effect.Effect<unknown, unknown>
   /** Starts quitAndInstall; succeeds once the app begins quitting for the update. */
   readonly installAndRestart: Effect.Effect<void, unknown>
   readonly externalInstall?: (url: string) => Effect.Effect<void, unknown>
@@ -57,7 +61,18 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
           staged: downloaded,
           version,
         })
-      yield* platform.stageUpdate({ differential: !downloaded })
+      yield* platform.stageUpdate({
+        differential: !downloaded,
+        onProgress: (percent) => {
+          const current = state
+
+          if (current.status !== "downloading" || current.version !== version) return
+          const rounded = Math.round(percent)
+
+          if (current.progress === rounded) return
+          transition({ status: "downloading", version, progress: rounded })
+        },
+      })
       downloaded = version
       yield* dependencies.persistence.set({ version })
     })
@@ -68,6 +83,9 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
     Effect.gen(function* () {
       if (!options.silent) yield* Effect.sync(() => transition({ status: "checking" }))
       const next = yield* platform.checkForUpdate
+
+      // An install that started while this check was in flight owns the state now.
+      if (installing) return state
 
       if (!next || (next.mode === "restart" && next.version === dependencies.currentVersion)) {
         yield* dependencies.persistence.clear
@@ -89,15 +107,19 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
       return transition({ status: "available", version: next.version })
     }).pipe(
       Effect.catch((error) =>
-        Effect.sync(() =>
-          transition({ status: "error", message: error instanceof Error ? error.message : String(error) }),
-        ),
+        Effect.sync(() => {
+          if (installing) return state
+
+          return transition({ status: "error", message: error instanceof Error ? error.message : String(error) })
+        }),
       ),
     )
 
   const refreshStaged = (platform: Platform, staged: string) =>
     Effect.gen(function* () {
       const next = yield* platform.checkForUpdate
+
+      if (installing) return state
 
       if (!next) return state
       target = next
@@ -109,9 +131,9 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
       }
 
       if (next.version === staged || next.version === dependencies.currentVersion) return state
-      yield* stage(platform, next.version)
 
-      return transition({ status: installing ? "installing" : "ready", version: next.version })
+      // A newer release is only offered. Downloading waits for the user, or for Auto automatically.
+      return transition({ status: "available", version: next.version })
     }).pipe(
       Effect.catch((error) =>
         Effect.sync(() => {
@@ -130,6 +152,8 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
   const refreshExternal = (platform: Platform) =>
     Effect.gen(function* () {
       const next = yield* platform.checkForUpdate
+
+      if (installing) return state
 
       if (!next || next.mode !== "external") return state
       target = next
@@ -245,7 +269,9 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
     installing = deferred
 
     return Effect.gen(function* () {
-      yield* pending ? Deferred.await(pending) : refreshStaged(platform, staged)
+      // The staged installer is already in the updater cache. Install it directly instead of re-checking or
+      // re-staging, which is what left the button on "installing" while another download ran.
+      yield* dependencies.persistence.clear
       yield* dependencies.restart(platform.installAndRestart)
 
       // The app is quitting into the installer.
@@ -274,16 +300,17 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
 
     if (ready?.version === dependencies.currentVersion) yield* dependencies.persistence.clear
 
-    // A staged release survives a restart, so the cache may already hold it. Remember which blockmap it belongs to and
-    // re-stage it below: a cache cleared since the download is repaired before the user clicks install, and
-    // electron-updater reuses the cached installer instead of patching a stale one.
+    // A staged release survives a restart, and its installer is still in the updater cache. Restore it as ready
+    // without downloading again, then let the check only offer a newer release.
     const staged = ready && ready.version !== dependencies.currentVersion ? ready.version : undefined
 
-    if (staged) downloaded = staged
+    if (staged) {
+      downloaded = staged
+      target = { mode: "restart", version: staged }
+      transition({ status: "ready", version: staged })
+    }
 
     yield* check
-
-    if (staged && state.status === "available" && state.version === staged) yield* download
     yield* autoInstallIfOptedIn
   })
 

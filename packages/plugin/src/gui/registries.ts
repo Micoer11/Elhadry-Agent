@@ -569,7 +569,7 @@ export interface LinkHandler {
   exists?(link: Link): boolean | Promise<boolean>
 }
 
-/** A pill in the titlebar or the tabs footer; the label shows on hover. */
+/** A pill in the titlebar or the tabs footer; it always shows its icon and label. */
 export interface TitlebarItem {
   /** The item's id; the host keeps the pill's element while the id stays. */
   readonly id: string

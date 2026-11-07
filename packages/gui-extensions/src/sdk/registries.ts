@@ -530,7 +530,7 @@ export interface TitlebarItem {
   readonly id: string
   /**
    * Where the item shows. Defaults to `titlebar`.
-   * - `titlebar`: a pill in the titlebar or tabs footer; the label shows on hover.
+   * - `titlebar`: a pill in the titlebar or tabs footer; it always shows its icon and label.
    * - `channel`: makes the dev channel badge a toggle that runs the item.
    */
   readonly placement?: "titlebar" | "channel"
