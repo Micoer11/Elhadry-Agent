@@ -121,9 +121,14 @@ export default function UpdatesSection(props: {
           <div data-component="settings-list">
             <div data-action="settings-latest-release">
               <Row title={latestTitle()} description={summary()}>
-                <Show when={action().run}>
-                  <Button size="normal" variant="neutral" onClick={() => props.run()}>
-                    {ctx.t(action().label)}
+                <Show when={action().visible}>
+                  <Button
+                    size="normal"
+                    variant="neutral"
+                    disabled={action().disabled}
+                    onClick={() => props.run()}
+                  >
+                    {ctx.t(action().label, action().params)}
                   </Button>
                 </Show>
               </Row>

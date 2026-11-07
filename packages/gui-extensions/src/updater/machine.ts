@@ -64,12 +64,16 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
       yield* platform.stageUpdate({
         differential: !downloaded,
         onProgress: (percent) => {
+          if (!Number.isFinite(percent)) return
           const current = state
 
           if (current.status !== "downloading" || current.version !== version) return
-          const rounded = Math.round(percent)
+          // Charge up to 99 while the installer is still being verified and saved; 100 belongs to the ready state, so
+          // the bar never sits full while the app is still working. Progress also never goes backwards: a delta
+          // reports bytes of changed ranges, and a late range used to move the bar back down.
+          const rounded = Math.min(99, Math.max(0, Math.round(percent)))
 
-          if (current.progress === rounded) return
+          if (current.progress !== undefined && rounded <= current.progress) return
           transition({ status: "downloading", version, progress: rounded })
         },
       })
@@ -119,7 +123,9 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
     Effect.gen(function* () {
       const next = yield* platform.checkForUpdate
 
-      if (installing) return state
+      // A handoff that already began owns the state. An install click still waiting on this check does not: publishing
+      // the newer offer lets the click stand down rather than adopt the newer feed with the older cached installer.
+      if (state.status === "installing") return state
 
       if (!next) return state
       target = next
@@ -264,11 +270,19 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
 
     if (state.status !== "ready") return Effect.fail(new Error("Update is not ready to install"))
     const staged = state.version
-    transition({ status: "installing", version: staged })
     const deferred = Deferred.makeUnsafe<void, unknown>()
     installing = deferred
 
     return Effect.gen(function* () {
+      // A launch check is still running after a restart restored the staged release. electron-updater needs that
+      // check's feed data to adopt the cached installer, so wait for it before handing off.
+      if (pending) yield* Deferred.await(pending)
+
+      // The check offered a newer release while the click waited. That offer owns the screen now: adopting the older
+      // cached installer against the newer feed would discard it and download the newer one without progress here.
+      if (state.status !== "ready" || state.version !== staged) return
+
+      transition({ status: "installing", version: staged })
       // The staged installer is already in the updater cache. Install it directly instead of re-checking or
       // re-staging, which is what left the button on "installing" while another download ran.
       yield* dependencies.persistence.clear

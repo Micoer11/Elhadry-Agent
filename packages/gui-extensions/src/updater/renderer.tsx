@@ -2,6 +2,7 @@ import { showToast } from "@elhadry/ui/toast"
 import { lazy, onCleanup, Suspense } from "solid-js"
 import { createKeyed, onIdle, Command, SettingsPage, TitlebarItem, type Setup, type SetupContext } from "../sdk"
 import { updaterAction } from "./action"
+import type { UpdaterState } from "./contract"
 import type definition from "./index"
 
 const setup: Setup<typeof definition> = (ctx) => {
@@ -15,6 +16,18 @@ const setup: Setup<typeof definition> = (ctx) => {
     const live = updater()
 
     return live.status === "active" ? live.value.state() : undefined
+  }
+
+  // The pill keeps the last update it knew while the updater Ipc is pending or briefly inactive, so a restart of the
+  // main extension never makes an available or staged update disappear from the sidebar.
+  let pill: UpdaterState | undefined
+
+  const pillState = () => {
+    const current = state()
+
+    if (current) pill = current
+
+    return current ?? pill
   }
 
   const act = (name: "check" | "download" | "install") => {
@@ -31,7 +44,7 @@ const setup: Setup<typeof definition> = (ctx) => {
   onCleanup(onIdle(() => void Section.preload()))
 
   ctx.add(TitlebarItem, () => {
-    const current = state()
+    const current = pillState()
 
     if (!current) return
 
@@ -46,14 +59,16 @@ const setup: Setup<typeof definition> = (ctx) => {
       return
 
     const action = updaterAction(current)
-    const progress = current.status === "downloading" ? current.progress : undefined
+    const progress = current.status === "downloading" ? (current.progress ?? 0) : undefined
+    const run = action.run
 
     return {
       id: "update",
       label: ctx.t("status.label"),
-      title: progress === undefined ? ctx.t(action.label) : ctx.t("action.downloadingProgress", { progress }),
+      title: ctx.t(action.label, action.params),
       busy: current.status === "installing",
-      run: action.run ? () => act(action.run) : undefined,
+      progress,
+      run: run ? () => act(run) : undefined,
     }
   })
 

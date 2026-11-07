@@ -2,6 +2,37 @@
   user-select: none;
 }
 
+/* A titlebar item's download progress, along the window's top edge. */
+[data-slot="titlebar-progress"] {
+  background-color: color-mix(in srgb, var(--v2-icon-icon-accent) 18%, transparent);
+}
+
+[data-slot="titlebar-progress-fill"] {
+  background-color: var(--v2-icon-icon-accent);
+}
+
+[data-slot="titlebar-progress"][data-indeterminate="true"] [data-slot="titlebar-progress-fill"] {
+  width: 28%;
+  animation: titlebar-progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes titlebar-progress-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="titlebar-progress"][data-indeterminate="true"] [data-slot="titlebar-progress-fill"] {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 [data-slot="vertical-tabs-sidebar"] [data-slot="vertical-tabs"] {
   display: flex;
   flex: 1;

@@ -17,9 +17,44 @@ export function useTitlebarItems() {
   })
 
   return {
+    all: items,
     ids,
     item: (id: string) => items().find((item) => item.id === id),
   }
+}
+
+/** The download progress a titlebar item reports, as a thin bar along the window's top edge. */
+export function TitlebarProgress(props: { items: ReturnType<typeof useTitlebarItems> }) {
+  const progress = createMemo(() => {
+    const item = props.items.all().find((candidate) => candidate.progress !== undefined)
+
+    if (!item) return
+
+    return { value: Math.min(100, Math.max(0, item.progress ?? 0)), label: item.title ?? item.label }
+  })
+
+  return (
+    <Show when={progress()}>
+      {(current) => (
+        <div
+          data-slot="titlebar-progress"
+          data-indeterminate={current().value === 0 ? "true" : "false"}
+          class="pointer-events-none absolute inset-x-0 top-0 z-50 h-0.5 overflow-hidden"
+          role="progressbar"
+          aria-label={current().label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={current().value === 0 ? undefined : current().value}
+        >
+          <div
+            data-slot="titlebar-progress-fill"
+            class="h-full rounded-e-full transition-[width] duration-300 ease-out motion-reduce:transition-none"
+            style={current().value === 0 ? undefined : { width: `${current().value}%` }}
+          />
+        </div>
+      )}
+    </Show>
+  )
 }
 
 export function TitlebarItems(props: { items: ReturnType<typeof useTitlebarItems>; vertical?: boolean }) {
@@ -47,7 +82,7 @@ function TitlebarItemButton(props: { item: TitlebarItem; vertical?: boolean }) {
       data-slot="titlebar-update"
       class="relative shrink-0 rounded-full bg-v2-background-bg-deep"
       classList={{
-        "h-7 w-full self-start": props.vertical,
+        "h-7 w-fit max-w-full self-start": props.vertical,
         "me-3 h-5": !props.vertical,
       }}
     >

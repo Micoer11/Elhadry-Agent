@@ -34,7 +34,7 @@ import { useSettingsDialog } from "@/settings/command"
 import { rootSession } from "@/shell/routes/session"
 import { TitlebarItem } from "@elhadry/gui-extensions/sdk"
 import { useExtensionHost } from "@/runtime/extension/host"
-import { TitlebarItems, useTitlebarItems } from "@/runtime/extension/titlebar-items"
+import { TitlebarItems, TitlebarProgress, useTitlebarItems } from "@/runtime/extension/titlebar-items"
 import devIcon from "../../../../desktop/icons/dev/64x64.png"
 import betaIcon from "../../../../desktop/icons/beta/64x64.png"
 
@@ -182,6 +182,7 @@ export function Titlebar(props: {
       }}
       data-tauri-drag-region
     >
+      <TitlebarProgress items={titlebarItems} />
       <Switch>
         <Match when>
           {(_) => {

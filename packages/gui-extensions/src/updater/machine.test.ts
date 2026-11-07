@@ -266,6 +266,43 @@ describe("updater", () => {
     expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
   })
 
+  test("waits for an in-flight launch check before installing a restored release", async () => {
+    const gate = Promise.withResolvers<void>()
+    const app = await setup({ ready: { version: "2.0.0" }, checks: ["2.0.0"], gate: () => gate.promise })
+
+    app.startFork()
+    await tick()
+    expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
+    expect(app.calls).toEqual(["check"])
+
+    app.installFork()
+    await tick()
+    expect(app.calls).toEqual(["check"])
+
+    gate.resolve()
+    await tick()
+    expect(app.calls).toEqual(["check", "prepare", "install"])
+    expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
+  })
+
+  test("keeps a newer launch offer instead of installing the older staged release", async () => {
+    const gate = Promise.withResolvers<void>()
+    const app = await setup({ ready: { version: "2.0.0" }, checks: ["3.0.0"], gate: () => gate.promise })
+
+    app.startFork()
+    await tick()
+    expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
+
+    app.installFork()
+    await tick()
+    expect(app.calls).toEqual(["check"])
+
+    gate.resolve()
+    await tick()
+    expect(app.calls).toEqual(["check"])
+    expect(app.state()).toEqual({ status: "available", version: "3.0.0" })
+  })
+
   test("a check while the download is in flight waits for it instead of downloading again", async () => {
     const staging = Promise.withResolvers<void>()
     const app = await setup({ stage: () => staging.promise })
@@ -374,31 +411,8 @@ describe("updater", () => {
     expect(app.calls).toEqual(["check"])
   })
 
-  test("a refresh already in flight does not disturb the installation it started under", async () => {
-    const refresh = Promise.withResolvers<void>()
-
-    const app = await setup({
-      checks: ["2.0.0", "3.0.0"],
-      gate: (check) => (check === 1 ? refresh.promise : Promise.resolve()),
-    })
-
-    await app.start()
-    await app.download()
-
-    const checking = app.check()
-    await tick()
-    app.installFork()
-    expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
-
-    refresh.resolve()
-    await checking
-    expect(app.state()).toEqual({ status: "installing", version: "2.0.0" })
-    await tick()
-    expect(app.calls).toEqual(["check", "download", "check", "prepare", "install"])
-  })
-
-  test("publishes rounded download progress while staging", async () => {
-    const app = await setup({ progress: [12.4, 50.6, 99.9] })
+  test("publishes monotonic download progress that stays below 100 until ready", async () => {
+    const app = await setup({ progress: [12.4, 50.6, 9, 99.9] })
     await app.start()
     await app.download()
 
@@ -406,8 +420,9 @@ describe("updater", () => {
       { status: "downloading", version: "2.0.0" },
       { status: "downloading", version: "2.0.0", progress: 12 },
       { status: "downloading", version: "2.0.0", progress: 51 },
-      { status: "downloading", version: "2.0.0", progress: 100 },
+      { status: "downloading", version: "2.0.0", progress: 99 },
     ])
+    expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
   })
 
   test("returns to ready after a failed installation and allows a retry", async () => {

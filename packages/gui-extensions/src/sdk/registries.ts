@@ -542,6 +542,12 @@ export interface TitlebarItem {
   readonly icon?: IconName
   /** Shows a spinner and disables the pill. */
   readonly busy?: boolean
+  /**
+   * Download progress for work the pill started, as a whole percent from 0 to 100. While it is set the host shows a
+   * thin progress bar along the top edge of the window, and hides it once the field is omitted. `0` shows the bar as
+   * indeterminate until the first measurement arrives.
+   */
+  readonly progress?: number
   /** Shows the pill pressed (`aria-pressed`). */
   readonly pressed?: boolean
   /** Runs when the user clicks the pill, or the channel badge it toggles. Omit it for an item that only shows. */

@@ -29,6 +29,80 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
     currentVersion: app.getVersion(),
   })
 
+  const stageUpdate = (options: {
+    readonly differential: boolean
+    readonly onProgress?: (percent: number) => void
+  }) =>
+    Effect.gen(function* () {
+      // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
+      // blockmap embedded in the running file. An emulated x64 install updates to the ARM64 installer, which cannot be
+      // patched from the cached x64 one.
+      if (process.platform !== "darwin")
+        updateClient.disableDifferentialDownload =
+          process.platform === "win32" && (!options.differential || app.runningUnderARM64Translation)
+
+      // electron-updater wires its progress callback only when a listener exists as the download starts, so subscribe
+      // here and remove the listener as soon as the download settles.
+      const onProgress = options.onProgress
+      const progress = (info: { readonly percent: number }) => onProgress?.(info.percent)
+
+      if (onProgress) updateClient.on("download-progress", progress)
+
+      yield* Effect.tryPromise({
+        // The returned promise settles after electron-updater dispatches update-downloaded. Waiting for the event on
+        // Electron's autoUpdater stopped the flow at 100%: electron-updater emits it on its own client.
+        try: () => updateClient.downloadUpdate(),
+        catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+      }).pipe(Effect.ensuring(Effect.sync(() => updateClient.removeListener("download-progress", progress))))
+    })
+
+  // electron-updater keeps a downloaded installer in its on-disk cache but forgets it in memory between launches.
+  // Running the download again adopts that cache entry (validating its SHA-512), and is instant when this run already
+  // downloaded it, so quitAndInstall always has an installer to run.
+  const adoptDownloaded = Effect.tryPromise({
+    try: () => updateClient.downloadUpdate(),
+    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+  })
+
+  // BaseUpdater.quitAndInstall emits before-quit-for-update on Electron's autoUpdater, then quits the app.
+  const quitAndInstall = Effect.callback<void, Error>((resume) => {
+    const cleanup = () => {
+      autoUpdater.removeListener("before-quit-for-update", started)
+      updateClient.removeListener("error", fail)
+    }
+
+    const started = () => {
+      cleanup()
+      resume(Effect.void)
+    }
+
+    const fail = (error: Error) => {
+      cleanup()
+      resume(Effect.fail(error))
+    }
+
+    autoUpdater.once("before-quit-for-update", started)
+    updateClient.once("error", fail)
+
+    try {
+      updateClient.quitAndInstall()
+    } catch (error) {
+      fail(error instanceof Error ? error : new Error(String(error)))
+    }
+
+    return Effect.sync(cleanup)
+  }).pipe(
+    Effect.timeoutOrElse({
+      duration: restartTimeout,
+      orElse: () =>
+        Effect.logError("update restart did not start").pipe(
+          Effect.andThen(Effect.fail(new Error("Update restart did not start"))),
+        ),
+    }),
+  )
+
+  const installAndRestart = adoptDownloaded.pipe(Effect.andThen(quitAndInstall))
+
   return {
     checkForUpdate: Effect.tryPromise({
       try: async () => {
@@ -56,78 +130,3 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
     installAndRestart,
   } satisfies Platform
 })
-
-function stageUpdate(options: {
-  readonly differential: boolean
-  readonly onProgress?: (percent: number) => void
-}) {
-  // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
-  // blockmap embedded in the running file. An emulated x64 install updates to the ARM64 installer, which cannot be
-  // patched from the cached x64 one.
-  if (process.platform !== "darwin")
-    updateClient.disableDifferentialDownload =
-      process.platform === "win32" && (!options.differential || app.runningUnderARM64Translation)
-
-  return Effect.callback<void, Error>((resume) => {
-    const cleanup = () => {
-      autoUpdater.removeListener("update-downloaded", complete)
-      updateClient.removeListener("download-progress", progress)
-      updateClient.removeListener("error", fail)
-    }
-
-    const complete = () => {
-      cleanup()
-      resume(Effect.void)
-    }
-
-    const progress = (info: { readonly percent: number }) => options.onProgress?.(info.percent)
-
-    const fail = (error: Error) => {
-      cleanup()
-      resume(Effect.fail(error))
-    }
-
-    autoUpdater.once("update-downloaded", complete)
-    updateClient.on("download-progress", progress)
-    updateClient.once("error", fail)
-    void updateClient.downloadUpdate().catch(fail)
-
-    return Effect.sync(cleanup)
-  })
-}
-
-const installAndRestart = Effect.callback<void, Error>((resume) => {
-  const cleanup = () => {
-    autoUpdater.removeListener("before-quit-for-update", started)
-    updateClient.removeListener("error", fail)
-  }
-
-  const started = () => {
-    cleanup()
-    resume(Effect.void)
-  }
-
-  const fail = (error: Error) => {
-    cleanup()
-    resume(Effect.fail(error))
-  }
-
-  autoUpdater.once("before-quit-for-update", started)
-  updateClient.once("error", fail)
-
-  try {
-    updateClient.quitAndInstall()
-  } catch (error) {
-    fail(error instanceof Error ? error : new Error(String(error)))
-  }
-
-  return Effect.sync(cleanup)
-}).pipe(
-  Effect.timeoutOrElse({
-    duration: restartTimeout,
-    orElse: () =>
-      Effect.logError("update restart did not start").pipe(
-        Effect.andThen(Effect.fail(new Error("Update restart did not start"))),
-      ),
-  }),
-)
