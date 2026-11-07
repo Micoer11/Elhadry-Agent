@@ -49,6 +49,27 @@ describe("SkillPlugin.Plugin", () => {
           description: expect.stringContaining("Elhadry Agent issue"),
         }),
       )
+      expect(skills).toContainEqual(
+        expect.objectContaining({
+          id: "base",
+          name: "Base",
+          description: expect.stringContaining("coding or file task"),
+        }),
+      )
+      expect(skills).toContainEqual(
+        expect.objectContaining({
+          id: "capabilities",
+          name: "Elhadry Agent Capabilities",
+          description: expect.stringContaining("schedule a prompt for later"),
+        }),
+      )
+      const base = skills.find((item) => item.id === "base")
+      expect(base?.content).toContain("## Paths")
+      expect(base?.content).toContain("Verify and report")
+      const capabilities = skills.find((item) => item.id === "capabilities")
+      expect(capabilities?.content).toContain("elhadry_schedule_create")
+      expect(capabilities?.content).toContain("elhadry_mcp_add")
+      expect(capabilities?.content).toContain("elhadry_skill_add")
       expect(report?.content).toContain("- Elhadry Agent version: 1.2.3")
       expect(report?.content).toContain("- install/channel: beta")
     }),

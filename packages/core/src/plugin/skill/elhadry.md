@@ -94,45 +94,86 @@ specific feature from the `docs` skill as the source of truth, and preserve unre
 settings when editing an existing file. Keep the existing `$schema` value in
 configuration examples, but do not fetch it to determine the V2 configuration shape.
 
+## Skills
+
+When the user asks to create or add a skill, call `elhadry_skill_add` yourself.
+It writes a `SKILL.md` with the name, description, and Markdown instructions,
+and the skill becomes available immediately. Use `elhadry_skill_list` first when
+the ID may exist, and pass `overwrite: true` only when the user asks to replace
+an existing skill. For a project-only skill, write
+`.elhadry/skills/<id>/SKILL.md` instead.
+
+Global skills live under `~/.config/elhadry/skills/<id>/SKILL.md`; project skills
+under `.elhadry/skills/<id>/SKILL.md`. The description is what makes a skill
+discoverable, so state what it does and when to use it. Supporting scripts and
+references belong beside `SKILL.md` and are referenced by relative path.
+
+Read the `capabilities` skill for the exact tool inputs, frontmatter, and
+directory layout, or `configure/skills.md` from the `docs` skill for the bundled
+guide. For general coding, path, command, and verification rules, read the
+`base` skill.
+
 ## MCP servers
 
 Configure MCP servers under `mcp.servers`. When the user asks to add any MCP
 server, including a custom or third-party one that is not in the ready-made
 catalog, call the `elhadry_mcp_add` tool yourself. It accepts a remote server as
 `{ type: "remote", url }` or a local server as `{ type: "local", command,
-environment }`, plus optional headers and timeout.
+environment }`, plus optional headers, codemode, timeout, and protocol.
 
 The tool saves the server disabled so the user can complete any sign-in from the
 app. Do not write an API key into a header when the server supports OAuth; prefer
 an environment substitution such as `{env:MCP_API_KEY}`. After adding, tell the
-user to open Settings → Extensions → MCP and connect the server.
+user to open Settings → Extensions → MCP and connect the server. Use
+`elhadry_mcp_remove` when the user asks to delete a server, and
+`elhadry_mcp_list` to check the exact name and status.
 
-Prefer the CLI for edits outside the tool because it preserves unrelated
-configuration. Use `--global` when the user asks to set up a service for
-themselves without limiting it to the current project; omit it when they
-explicitly want project-local configuration.
+Read the `capabilities` skill for the full input shape and the OAuth flow, or
+`configure/mcp-servers.md` from the `docs` skill for every configuration field.
+
+Prefer the tool for edits because it preserves unrelated configuration. When
+editing outside the tool, use the CLI without `--global` for a project-local
+server and with `--global` when the user wants it in every project:
 
 ```sh
 elhadry mcp add <name> --global --url <remote-url>
 elhadry mcp list
 ```
 
-Remote servers use OAuth by default. If `mcp list` reports that a server needs
-authentication, tell the user to run `/mcps`, select the server, and sign in.
-Do not run `elhadry mcp auth` through the shell tool: it starts an interactive
-flow whose authorization link can be hidden in background process output.
-Use the user-facing MCP interface instead.
+Remote servers use OAuth by default. If a server needs authentication, tell the
+user to run `/mcps`, select the server, and sign in. Do not run
+`elhadry mcp auth` through the shell tool: it starts an interactive flow whose
+authorization link can be hidden in background process output. Report the server
+as configured but awaiting sign-in until its status is `connected`.
 
-Report the server as configured but awaiting sign-in until its connection
-status confirms it is connected.
+OAuth credentials are stored outside the Elhadry Agent configuration. Do not ask
+for or store an API key when the server supports OAuth. Use header-based
+credentials only when OAuth is unavailable or the user explicitly requires them,
+and use an environment substitution such as `{env:MCP_API_KEY}` instead of
+writing a secret into configuration.
 
-OAuth credentials are stored outside the Elhadry Agent configuration. Do not ask for or
-store an API key when the server supports OAuth. Use header-based credentials
-only when OAuth is unavailable or the user explicitly requires them, and use an
-environment substitution such as `{env:MCP_API_KEY}` instead of writing a
-secret into configuration.
+## Scheduled tasks
 
-Read `configure/mcp-servers.md` from the `docs` skill for the full field list.
+When a request involves a time or a condition — "in 20 minutes", "every morning
+at 9", "when CI passes", "only when the branch changes" — create a schedule
+instead of waiting, sleeping, or telling the user to come back. Call
+`elhadry_schedule_create`; use `elhadry_schedule_list`,
+`elhadry_schedule_pause`, `elhadry_schedule_resume`, and
+`elhadry_schedule_delete` to manage this session's schedules.
+
+- `when` takes exactly one of `{ in }`, `{ at }`, `{ every }`, or `{ cron }`.
+- `until` polls a shell or Code Mode check and wakes once when it passes; `if`
+  gates each recurring slot with no model call.
+- `ends` stops a repeating schedule by time or run count, and `model` runs the
+  task with its own model.
+
+Scheduled prompts run unattended, so write them to stand on their own: include
+every path and instruction, never ask questions, make reasonable assumptions,
+and finish. Pass the user's IANA time zone as `tz` when it differs from the app's
+configured time zone.
+
+Read the `capabilities` skill for every trigger, gate, and limit, and for the
+exact tool inputs. The user can also run `/schedule <request>`.
 
 ## V1 to V2 migration
 
