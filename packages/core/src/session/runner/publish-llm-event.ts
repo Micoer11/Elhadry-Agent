@@ -1,4 +1,4 @@
-import { type LLMEvent, type ProviderMetadata, type ToolResultValue } from "@elhadry/ai/effect"
+import { type LLMEvent, type ProviderErrorEvent, type ProviderMetadata, type ToolResultValue } from "@elhadry/ai/effect"
 import { isRecord } from "@elhadry/util/record"
 import type { Agent } from "@elhadry/schema/agent"
 import type { Model } from "@elhadry/schema/model"
@@ -114,6 +114,7 @@ export const createLLMEventPublisher = (bus: Pick<Bus.Interface, "publish">, inp
   const assistantMessageID = input.assistantMessageID
   let stepStarted = false
   let providerFailed = false
+  let providerError: ProviderErrorEvent | undefined
   let outputStarted = false
   let stepFailure: SessionError.Error | undefined
   let stepSettlement: StepRecord["finish"]
@@ -585,7 +586,8 @@ export const createLLMEventPublisher = (bus: Pick<Bus.Interface, "publish">, inp
         return
       case "provider-error":
         providerFailed = true
-        yield* failAssistant({ type: "provider.unknown", message: event.message })
+        providerError = event
+        // The step decides whether Auto rotates to another model or records this terminal failure.
         return
     }
   }, Effect.uninterruptible)
@@ -639,6 +641,8 @@ export const createLLMEventPublisher = (bus: Pick<Bus.Interface, "publish">, inp
     failUnsettledTools,
     failIncompleteTools,
     hasProviderError: () => providerFailed,
+    /** The first provider error event this step saw, for Auto model rotation or the terminal failure. */
+    providerError: () => providerError,
     hasStarted: () => stepStarted,
     /** Immutable snapshot of everything recorded for this step so far. */
     record: (): StepRecord => ({

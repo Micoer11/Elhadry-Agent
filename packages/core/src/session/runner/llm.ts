@@ -1,6 +1,7 @@
 export * as SessionRunnerLLM from "./llm.js"
 
 import { Message } from "@elhadry/ai/effect"
+import type { Model } from "@elhadry/schema/model"
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { Cause, Effect, Exit, FiberMap, Layer } from "effect"
 import { Database } from "../../database/database.js"
@@ -234,10 +235,14 @@ const layer = Layer.effect(
       let initial: SessionContext.Loaded | undefined = first
       let recoverOverflow = true
       let recoverContinuation = true
+      // Auto never rotates back to a model this step already tried.
+      const tried: Model.Ref[] = []
       while (true) {
         // Reuse boundary preparation once; retries refresh context without delivering more input.
         const loaded = initial ?? (yield* prepareContext(sessionID).pipe(Effect.flatMap(context.load)))
         initial = undefined
+        if (!tried.some((ref) => ref.providerID === loaded.model.ref.providerID && ref.id === loaded.model.ref.id))
+          tried.push(loaded.model.ref)
         const estimate = SessionCompaction.estimatePrompt(loaded)
         const compacted = yield* compaction.compact({ reason: "auto", context: loaded, estimate })
         if (compacted.status === "failed") return yield* new StepFailedError({ error: compacted.error })
@@ -308,6 +313,7 @@ const layer = Layer.effect(
                   .pipe(Effect.map((result) => result.status === "completed"))
               : Effect.succeed(false),
           ),
+          rotate: () => context.rotateModel(loaded.session, tried),
         })
         const completed = yield* SessionStep.Outcome.$match(outcome, {
           Completed: Effect.fnUntraced(function* (outcome) {
@@ -370,6 +376,14 @@ const layer = Layer.effect(
           }),
           RecoverFull: Effect.fnUntraced(function* () {
             recoverContinuation = false
+          }),
+          Rotate: Effect.fnUntraced(function* (outcome) {
+            // The assistant message stays; the next attempt continues it on the chosen model.
+            yield* bus.publish(SessionEvent.ModelSelected, {
+              sessionID,
+              model: outcome.model.ref,
+              previous: loaded.model.ref,
+            })
           }),
         })
         if (completed !== undefined) return completed

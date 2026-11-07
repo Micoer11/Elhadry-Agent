@@ -55,6 +55,14 @@ export interface Interface {
   readonly resolveModel: (
     session: SessionSchema.Info,
   ) => Effect.Effect<SessionRunnerModel.Resolved, SessionRunnerModel.Error>
+  /**
+   * The next added model to try when Auto is on and a step fails before output, or undefined when no other model is
+   * available or the session is not in Auto.
+   */
+  readonly rotateModel: (
+    session: SessionSchema.Info,
+    tried: ReadonlyArray<Model.Ref>,
+  ) => Effect.Effect<SessionRunnerModel.Resolved | undefined>
   /** Selects auxiliary title capabilities without instruction or tool preflight. */
   readonly selectTitle: (session: SessionSchema.Info) => Effect.Effect<
     | {
@@ -90,6 +98,29 @@ const layer = Layer.effect(
     const registry = yield* Tool.Service
 
     const resolveModel = (session: SessionSchema.Info) => models.resolve(session, model.available)
+
+    const rotateModel = Effect.fn("SessionContext.rotateModel")(function* (
+      session: SessionSchema.Info,
+      tried: ReadonlyArray<Model.Ref>,
+    ) {
+      // Auto alone may change the model behind the user's back; an explicit choice keeps failing visibly.
+      if (session.metadata?.autoModel !== true) return
+      const candidates = yield* model.available(["chat"])
+
+      for (const candidate of candidates) {
+        if (!candidate.capabilities.tools || !Model.supportsText(candidate)) continue
+        if (tried.some((ref) => ref.providerID === candidate.providerID && ref.id === candidate.id)) continue
+        const resolved = yield* models
+          .resolve(
+            { ...session, model: Model.Ref.make({ providerID: candidate.providerID, id: candidate.id }) },
+            model.available,
+          )
+          .pipe(Effect.orElseSucceed(() => undefined))
+        if (resolved) return resolved
+      }
+
+      return undefined
+    })
 
     const selectTitle = Effect.fn("SessionContext.selectTitle")(function* (session: SessionSchema.Info) {
       const agent = yield* agents.get(Agent.ID.make("title"))
@@ -191,7 +222,7 @@ const layer = Layer.effect(
       }
     })
 
-    return Service.of({ select, load, resolveModel, selectTitle, request })
+    return Service.of({ select, load, resolveModel, rotateModel, selectTitle, request })
   }),
 )
 

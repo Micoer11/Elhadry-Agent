@@ -205,7 +205,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     // Auto belongs to this session: the draft keeps it locally, a created session in its metadata.
-    // Core picks a random model per prompt, so Auto never needs a model of its own here.
+    // Core keeps the chosen model and rotates to another added model when it fails before any output.
     const auto = {
       current() {
         const draft = scope()

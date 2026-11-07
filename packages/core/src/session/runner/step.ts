@@ -38,6 +38,8 @@ export type Outcome = Data.TaggedEnum<{
   }
   RecoverFull: {}
   Compacted: {}
+  /** Auto switches to another added model and retries the same assistant message before output. */
+  Rotate: { readonly model: SessionRunnerModel.Resolved }
   OutputLimit: { readonly needsContinuation: boolean }
 }>
 export const Outcome = Data.taggedEnum<Outcome>()
@@ -57,6 +59,8 @@ interface Input {
   readonly recoverContinuation: boolean
   /** The runner owns compaction policy; the attempt invokes it only before durable output. */
   readonly recoverOverflow: Effect.Effect<boolean>
+  /** Auto's next added model for a pre-output failure, or undefined when the step must fail normally. */
+  readonly rotate: () => Effect.Effect<SessionRunnerModel.Resolved | undefined>
 }
 
 const TOOLS_INTERRUPTED = { type: "aborted", message: "Tool execution interrupted" } as const
@@ -179,6 +183,12 @@ export const make = Effect.gen(function* () {
             : undefined
         const llmFailure = streamFailure instanceof AIError ? streamFailure : unknownFinish
         const llmError = llmFailure && !recorded.providerFailed ? toSessionError(llmFailure) : undefined
+        const providerError = publisher.providerError()
+        // Auto may swap in another added model instead of surfacing a provider error or a dead transport.
+        if (!recorded.outputStarted && !streamInterrupted && (providerError || llmError)) {
+          const rotation = yield* restore(input.rotate())
+          if (rotation) return Outcome.Rotate({ model: rotation })
+        }
         if (
           input.recoverContinuation &&
           llmFailure?.reason._tag === "Transport" &&
@@ -203,6 +213,7 @@ export const make = Effect.gen(function* () {
           return Outcome.Retry({ error: llmError, decision: retry })
         }
         if (llmError) yield* publisher.failAssistant(llmError)
+        if (providerError) yield* publisher.failAssistant({ type: "provider.unknown", message: providerError.message })
 
         for (const decline of tools.declines)
           yield* publisher.failTool(decline.call.id, {

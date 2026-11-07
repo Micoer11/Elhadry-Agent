@@ -119,6 +119,7 @@ for (const fixture of [
             Effect.succeed(retry ? { retry: true, attempt: 2, delay: 0 } : { retry: false }),
           recoverContinuation: true,
           recoverOverflow: Effect.succeed(false),
+          rotate: () => Effect.succeed(undefined),
         })
         .pipe(Effect.exit)
       expect(Exit.isSuccess(result)).toBe(fixture.finish === "stop")
@@ -216,6 +217,7 @@ it.effect("records the cost the endpoint reports instead of the catalog price", 
       retry: () => Effect.succeed({ retry: false }),
       recoverContinuation: true,
       recoverOverflow: Effect.succeed(false),
+      rotate: () => Effect.succeed(undefined),
     })
 
     const message = yield* db
