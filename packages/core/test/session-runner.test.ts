@@ -6200,7 +6200,8 @@ describe("SessionRunnerLLM", () => {
     expect(yield* recordedEventTypes(sessionID)).not.toContain(Bus.versionedType(SessionEvent.ModelSelected.type, 1))
   })
 
-  scenario("lowers interrupted reasoning before continuing an incomplete stream", function* (s) {    yield* s.admit("Continue interrupted reasoning")
+  scenario("lowers interrupted reasoning before continuing an incomplete stream", function* (s) {
+    yield* s.admit("Continue interrupted reasoning")
     yield* s.llm.push(
       TestLLM.failAfter(
         incompleteStream(),
