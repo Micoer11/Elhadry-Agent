@@ -77,6 +77,9 @@ and run it.
 Each release keeps its own files, so an older version can be installed again at
 any time from the Releases page.
 
+**Settings → About** shows the version you are running, so you can confirm that
+an update was applied.
+
 ## Build from source
 
 The build runs on GitHub Actions (`.github/workflows/build-release.yml`) and
