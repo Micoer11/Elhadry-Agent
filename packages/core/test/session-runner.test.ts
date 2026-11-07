@@ -221,6 +221,8 @@ const makeRunnerState = (compaction?: SessionRunnerModel.Resolved["compaction"])
     currentModel: model,
     compaction,
     modelResolveHook: resolvesModel,
+    // Added models Auto may rotate to; empty by default, so an explicit model keeps failing visibly.
+    availableModels: [] as Model.Info[],
     systemBaseline: "Initial context",
     systemRemoved: false,
     systemUnavailable: false,
@@ -417,7 +419,7 @@ const layer = Layer.unwrap(
     const promptModels = Layer.mock(Model.Service, {
       get: () => Effect.undefined,
       all: () => Effect.succeed([]),
-      available: () => Effect.succeed([]),
+      available: () => Effect.succeed(state.availableModels),
       default: () => Effect.undefined,
       small: () => Effect.undefined,
     })
@@ -6154,8 +6156,51 @@ describe("SessionRunnerLLM", () => {
     ])
   })
 
-  scenario("lowers interrupted reasoning before continuing an incomplete stream", function* (s) {
-    yield* s.admit("Continue interrupted reasoning")
+  scenario("rotates Auto to another added model before recording a provider failure", function* (s) {
+    s.availableModels.push(Model.Info.make({ ...Model.Info.default(Provider.ID.make("fake"), ID.make("replacement")) }))
+    yield* s.bus.publish(SessionEvent.MetadataUpdated, { sessionID, metadata: { autoModel: true } })
+    yield* s.admit("Rotate after provider failure")
+    yield* s.llm.push(
+      Stream.fail(new AIError({ reason: new UnknownProviderError({ message: "Provider returned error" }) })),
+    )
+    yield* s.llm.push(TestLLM.text("Recovered on another model", "auto-rotation"))
+
+    yield* s.resume
+
+    // The same step retries on the added model instead of failing the assistant.
+    expect(s.requests.map((request) => request.model)).toEqual([model, replacementModel])
+    expect(s.requests[1]?.system.map((part) => part.text)).toEqual([
+      defaultSystem,
+      replacementIdentity,
+      "Initial context",
+    ])
+
+    const eventTypes = yield* recordedEventTypes(sessionID)
+    expect(eventTypes).toContain(Bus.versionedType(SessionEvent.ModelSelected.type, 1))
+    expect(eventTypes).not.toContain("session.step.failed.1")
+
+    const context = yield* s.context
+    expect(context.find((message) => message.type === "model-switched")).toMatchObject({
+      model: { id: ID.make("replacement"), providerID: Provider.ID.make("fake") },
+      previous: { id: ID.make("fake-model"), providerID: Provider.ID.make("fake") },
+    })
+    // The switch is recorded as its own message, so compare the conversation around it.
+    expect(context.filter((message) => message.type !== "model-switched")).toMatchObject([
+      Expected.user("Rotate after provider failure"),
+      Expected.assistant({ finish: "stop" }, [Expected.text("Recovered on another model")]),
+    ])
+  })
+
+  scenario("keeps an explicit model choice failing on a provider error instead of rotating", function* (s) {
+    s.availableModels.push(Model.Info.make({ ...Model.Info.default(Provider.ID.make("fake"), ID.make("replacement")) }))
+    yield* s.llm.push([LLMEvent.stepStart({ index: 0 }), LLMEvent.providerError({ message: "Provider unavailable" })])
+
+    expect((yield* s.runPrompt("Fail on an explicit model").pipe(Effect.flip)).message).toBe("Provider unavailable")
+    expect(s.requests).toHaveLength(1)
+    expect(yield* recordedEventTypes(sessionID)).not.toContain(Bus.versionedType(SessionEvent.ModelSelected.type, 1))
+  })
+
+  scenario("lowers interrupted reasoning before continuing an incomplete stream", function* (s) {    yield* s.admit("Continue interrupted reasoning")
     yield* s.llm.push(
       TestLLM.failAfter(
         incompleteStream(),
