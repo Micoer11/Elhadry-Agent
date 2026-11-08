@@ -241,7 +241,7 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
   // Providers the server already reports as connected are listed first: they are what the user has,
   // and everything below is a catalog to add from.
   const connected = createMemo(() => new Set(providers.connected().map((provider) => provider.id)))
-  const featured = ["anthropic", "openai", "google", "openrouter", "vercel"]
+  const featured = ["anthropic", "openai", "google", "openrouter", "nous", "vercel"]
   const custom = () => ({ id: CUSTOM_ID, name: language.t("dialog.provider.custom.label") })
 
   const all = createMemo(() => {
