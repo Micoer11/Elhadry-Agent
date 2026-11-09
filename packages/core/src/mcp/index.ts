@@ -359,6 +359,31 @@ export const layer = (options?: Options) =>
             ),
           )
 
+      // Reconnects a server that failed to start or unexpectedly lost its connection. One bounded retry
+      // sequence per entry: a manual connect, disable, authentication requirement, or replacement ends it.
+      const retryDelays = ["1 second", "2 seconds", "5 seconds", "10 seconds", "30 seconds", "60 seconds"] as const
+      const retrying = new WeakSet<ServerEntry>()
+      const scheduleReconnect = (name: ServerName, entry: ServerEntry) => {
+        if (retrying.has(entry)) return
+        retrying.add(entry)
+        fork(
+          Effect.gen(function* () {
+            for (const delay of retryDelays) {
+              yield* Effect.sleep(delay)
+              if (entries.get(name) !== entry || entry.status.status !== "failed") return
+              yield* Effect.gen(function* () {
+                // A reconnect, disable, or replacement may have won the lock while this attempt waited.
+                if (entries.get(name) !== entry || entry.status.status !== "failed") return
+                yield* startServer(name, entry)
+              }).pipe(locks.withLock(name))
+            }
+          }).pipe(
+            Effect.ensuring(Effect.sync(() => retrying.delete(entry))),
+            Effect.ignore,
+          ),
+        )
+      }
+
       // Re-establishes a server whose HTTP session the server dropped, unless another path already
       // replaced the connection while this one waited for the lock.
       const recover = (name: ServerName, entry: ServerEntry, connection: McpClient.Connection) =>
@@ -431,6 +456,7 @@ export const layer = (options?: Options) =>
               entry.status = { status: "failed", error: reason }
               yield* stopServer(name, entry)
               yield* bus.publish(McpEvent.StatusChanged, { server: name })
+              scheduleReconnect(name, entry)
             }),
           ),
         )
@@ -493,12 +519,14 @@ export const layer = (options?: Options) =>
           yield* Scope.close(scope, Exit.void)
           entry.scope = undefined
           const error = Cause.squash(result.cause)
-          entry.status =
+          const status: Status =
             error instanceof McpClient.NeedsAuthError
               ? { status: "needs_auth", error: error.message }
               : { status: "failed", error: error instanceof Error ? error.message : String(error) }
-          yield* Effect.logWarning("mcp connect failed", { server: name, status: entry.status })
+          entry.status = status
+          yield* Effect.logWarning("mcp connect failed", { server: name, status })
           yield* bus.publish(McpEvent.StatusChanged, { server: name })
+          if (status.status === "failed") scheduleReconnect(name, entry)
         }).pipe(
           Effect.ensuring(entry.startup.open),
           Effect.annotateLogs({ server: name, directory: location.directory, connectionID: crypto.randomUUID() }),

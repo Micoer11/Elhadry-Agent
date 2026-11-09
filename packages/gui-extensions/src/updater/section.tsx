@@ -15,7 +15,7 @@ export default function UpdatesSection(props: {
   autoInstall: Accessor<Live<AutoClient>>
   /** Runs the action the latest-release card offers, such as download or install. */
   run: () => void
-  /** Always checks for updates; it never downloads or installs. */
+  /** Always checks for updates, then downloads and installs whatever the check finds. */
   check: () => void
 }) {
   const ctx = useExtension<typeof definition>()

@@ -4,6 +4,7 @@ import { useDialog } from "@elhadry/ui/context/dialog"
 import { Icon } from "@elhadry/ui/icon"
 import { IconButton } from "@elhadry/ui/icon-button"
 import { Menu } from "@elhadry/ui/menu"
+import { Spinner } from "@elhadry/ui/spinner"
 import { OpenCodeLogo } from "@/providers/opencode-logo"
 import { showToast } from "@/shell/notifications/toast"
 import { popularProviders, useProviders } from "@/providers/catalog/providers"
@@ -18,6 +19,7 @@ import { formatServerError } from "@/runtime/server/errors"
 import { CONSOLE_INTEGRATION, CONSOLE_PROVIDERS } from "@/providers/connect/controller"
 import { DialogConnectProvider, useProviderConnectController } from "@/providers/connect/dialog"
 import { ProviderModelIcon } from "@/providers/models/provider-group"
+import { modelConfigs, type ModelConfig } from "@/providers/credentials/form"
 import { SettingsList } from "@/settings/list"
 import { activeProviderAccount, providerAccounts, type ProviderAccount } from "./accounts"
 import { AccountNameInput } from "./account-name"
@@ -53,12 +55,14 @@ export const SettingsProviders: Component<{
 
   const [state, setState] = createStore<{
     disconnecting: Record<string, "removing" | "removed" | "absent" | undefined>
+    refreshing: Record<string, boolean | undefined>
     consoleExpanded: boolean
     credentialID?: string
     renaming?: string
     held?: ProviderItem[]
   }>({
     disconnecting: {},
+    refreshing: {},
     consoleExpanded: false,
   })
 
@@ -226,11 +230,14 @@ export const SettingsProviders: Component<{
     if (state.disconnecting[item.id]) return
     updateDisconnecting([item.id], "removing")
     const target = props.directory ? { directory: props.directory } : undefined
+
     try {
       await serverSdk.api.config.update({ providers: { [item.id]: null } })
+
       if (item.integrationID) {
         await serverSdk.api.credential.remove({ credentialID: `provider:${item.id}` }).catch(() => undefined)
       }
+
       data.location.config.invalidate(target)
       data.location.integration.invalidate(target)
       data.location.provider.invalidate(target)
@@ -255,6 +262,92 @@ export const SettingsProviders: Component<{
   const note = (id: string) => PROVIDER_NOTES.find((item) => item.match(id))?.key
 
   const isCustom = (item: ProviderItem) => item.source === "custom"
+
+  const configEntries = createMemo(
+    () => data.location.config.list(props.directory ? { directory: props.directory } : undefined) ?? [],
+  )
+
+  // Only providers the config gives an endpoint can be refreshed; catalog providers resolve their endpoint elsewhere.
+  const configuredBaseURL = (providerID: string) =>
+    configEntries().some(
+      (entry) => entry.type === "document" && entry.info.providers?.[providerID]?.settings?.baseURL !== undefined,
+    )
+
+  const configuredModels = (providerID: string) =>
+    configEntries().reduce<Record<string, ModelConfig>>((models, entry) => {
+      if (entry.type !== "document") return models
+      const configured = entry.info.providers?.[providerID]?.models
+
+      return configured ? Object.assign(models, configured) : models
+    }, {})
+
+  // config.update replaces the provider's model list, so keep only the fields its patch accepts.
+  const writableModel = (model: ModelConfig) => {
+    const writable: ModelConfig = {}
+
+    if (model.name !== undefined) writable.name = model.name
+
+    if (model.capabilities !== undefined) writable.capabilities = model.capabilities
+
+    if (model.limit !== undefined) writable.limit = model.limit
+
+    return writable
+  }
+
+  const refreshModels = async (item: ProviderItem) => {
+    if (state.refreshing[item.id]) return
+    const target = props.directory ? { directory: props.directory } : undefined
+
+    setState("refreshing", item.id, true)
+
+    try {
+      const discovered = await serverSdk.api.provider.models({ providerID: item.id })
+
+      if (discovered.length === 0) {
+        showToast({
+          title: language.t("settings.providers.refresh.empty.title"),
+          description: language.t("settings.providers.refresh.empty.description", { provider: item.name }),
+        })
+
+        return
+      }
+
+      const existing = configuredModels(item.id)
+      const added = modelConfigs(discovered.map((model) => ({ id: model.id, name: model.name, meta: model })))
+
+      const models = Object.fromEntries(
+        discovered.map((model) => {
+          const id = model.id.trim()
+          const current = existing[id]
+
+          return [id, current ? writableModel(current) : added[id]]
+        }),
+      )
+
+      await serverSdk.api.config.update({ providers: { [item.id]: { models } } })
+      data.location.config.invalidate(target)
+      data.location.provider.invalidate(target)
+      data.location.model.invalidate(target)
+      await Promise.all([
+        data.location.config.sync(target),
+        data.location.provider.sync(target),
+        data.location.model.sync(target),
+      ]).catch(() => undefined)
+      showToast({
+        variant: "success",
+        icon: "circle-check",
+        title: language.t("settings.providers.refresh.success.title"),
+        description: language.t("settings.providers.refresh.success.description", { provider: item.name }),
+      })
+    } catch (error) {
+      showToast({
+        title: language.t("common.requestFailed"),
+        description: formatServerError(error, language.t),
+      })
+    } finally {
+      setState("refreshing", item.id, undefined)
+    }
+  }
 
   const disconnect = async (item: ProviderItem, name: string) => {
     if (state.disconnecting[item.id]) return
@@ -464,35 +557,51 @@ export const SettingsProviders: Component<{
                           <Show
                             when={canManageAccounts(item)}
                             fallback={
-                              <Show
-                                when={isCustom(item)}
-                                fallback={
-                                  <Show
-                                    when={canDisconnect(item)}
-                                    fallback={
-                                      <span class="settings-provider-env-hint">
-                                        {language.t("settings.providers.connected.environmentDescription")}
-                                      </span>
-                                    }
+                              <div class="flex items-center gap-1">
+                                <Show when={configuredBaseURL(item.id)}>
+                                  <Button
+                                    size="normal"
+                                    variant="ghost-muted"
+                                    disabled={state.refreshing[item.id]}
+                                    aria-label={language.t("settings.providers.refresh.aria", { provider: item.name })}
+                                    onClick={() => void refreshModels(item)}
                                   >
-                                    <Button
-                                      size="normal"
-                                      variant="ghost-muted"
-                                      onClick={() => void disconnect(item, item.name)}
+                                    <Show when={state.refreshing[item.id]} fallback={<Icon name="refresh" size="small" />}>
+                                      <Spinner class="size-4" />
+                                    </Show>
+                                    {language.t("settings.providers.refresh")}
+                                  </Button>
+                                </Show>
+                                <Show
+                                  when={isCustom(item)}
+                                  fallback={
+                                    <Show
+                                      when={canDisconnect(item)}
+                                      fallback={
+                                        <span class="settings-provider-env-hint">
+                                          {language.t("settings.providers.connected.environmentDescription")}
+                                        </span>
+                                      }
                                     >
-                                      {language.t("common.disconnect")}
-                                    </Button>
-                                  </Show>
-                                }
-                              >
-                                <Button
-                                  size="normal"
-                                  variant="ghost-muted"
-                                  onClick={() => void deleteCustom(item)}
+                                      <Button
+                                        size="normal"
+                                        variant="ghost-muted"
+                                        onClick={() => void disconnect(item, item.name)}
+                                      >
+                                        {language.t("common.disconnect")}
+                                      </Button>
+                                    </Show>
+                                  }
                                 >
-                                  {language.t("common.delete")}
-                                </Button>
-                              </Show>
+                                  <Button
+                                    size="normal"
+                                    variant="ghost-muted"
+                                    onClick={() => void deleteCustom(item)}
+                                  >
+                                    {language.t("common.delete")}
+                                  </Button>
+                                </Show>
+                              </div>
                             }
                           >
                             <AccountMenu provider={item} />

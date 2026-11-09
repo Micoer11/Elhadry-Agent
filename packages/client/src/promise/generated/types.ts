@@ -4010,7 +4010,8 @@ export type ProviderGetInput = {
 export type ProviderGetOutput = { location: LocationPublicRef; data: ProviderInfo }
 
 export type ProviderModelsInput = {
-  readonly baseURL: string
+  readonly providerID?: string | undefined
+  readonly baseURL?: string | undefined
   readonly apiKey?: string | undefined
   readonly headers?: { readonly [x: string]: string } | undefined
 }
@@ -4990,6 +4991,7 @@ export type ExperimentalConfigUpdateInput = {
     | {
         readonly [x: string]: {
           readonly name?: string
+          readonly env?: ReadonlyArray<string>
           readonly package?: string
           readonly settings?: {
             readonly timeout?: number | false
@@ -5007,7 +5009,17 @@ export type ExperimentalConfigUpdateInput = {
                 readonly tools?: boolean
                 readonly input?: ReadonlyArray<string>
                 readonly output?: ReadonlyArray<string>
+                readonly temperature?: boolean
+                readonly reasoning?:
+                  | { readonly supported: false }
+                  | {
+                      readonly supported: true
+                      readonly toggle?: boolean
+                      readonly effort?: ReadonlyArray<string>
+                      readonly budget?: { readonly min?: number; readonly max?: number }
+                    }
               }
+              readonly limit?: { readonly context?: number; readonly input?: number; readonly output?: number }
             }
           }
         } | null

@@ -1843,12 +1843,17 @@ export function make(options: ClientOptions) {
           },
           requestOptions,
         ),
-      models: (input: ProviderModelsInput, requestOptions?: RequestOptions) =>
+      models: (input?: ProviderModelsInput, requestOptions?: RequestOptions) =>
         request<{ readonly data: ProviderModelsOutput }>(
           {
             method: "POST",
             path: `/api/provider/models`,
-            body: { baseURL: input["baseURL"], apiKey: input["apiKey"], headers: input["headers"] },
+            body: {
+              providerID: input?.["providerID"],
+              baseURL: input?.["baseURL"],
+              apiKey: input?.["apiKey"],
+              headers: input?.["headers"],
+            },
             successStatus: 200,
             declaredStatuses: [400, 401, 404],
             empty: false,

@@ -11,6 +11,12 @@ export const UpdaterState = Schema.Union([
     version: Schema.String,
     /** Whole-percent download progress, once the platform reports it. */
     progress: Schema.optional(Schema.Number),
+    /** Bytes downloaded so far, once the platform reports it. */
+    transferred: Schema.optional(Schema.Number),
+    /** Total bytes in the download, once the platform reports it. */
+    total: Schema.optional(Schema.Number),
+    /** Current download speed in bytes per second, once the platform reports it. */
+    bytesPerSecond: Schema.optional(Schema.Number),
   }),
   Schema.Struct({ status: Schema.Literal("ready"), version: Schema.String }),
   Schema.Struct({ status: Schema.Literal("download-required"), version: Schema.String }),

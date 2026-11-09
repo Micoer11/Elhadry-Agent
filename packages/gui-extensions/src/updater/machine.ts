@@ -5,12 +5,24 @@ export type UpdateTarget =
   | { readonly mode: "restart"; readonly version: string }
   | { readonly mode: "external"; readonly version: string; readonly url: string }
 
+/** One download-progress report from the platform. */
+export type DownloadProgress = {
+  /** Whole-percent progress, from 0 to 100. */
+  readonly percent: number
+  /** Bytes downloaded so far. */
+  readonly transferred: number
+  /** Total bytes in the download. */
+  readonly total: number
+  /** Current download speed in bytes per second. */
+  readonly bytesPerSecond: number
+}
+
 export type Platform = {
   readonly checkForUpdate: Effect.Effect<UpdateTarget | undefined, unknown>
   readonly stageUpdate: (options: {
     readonly differential: boolean
-    /** Receives whole-percent download progress while the installer downloads. */
-    readonly onProgress?: (percent: number) => void
+    /** Receives download progress while the installer downloads. */
+    readonly onProgress?: (progress: DownloadProgress) => void
   }) => Effect.Effect<unknown, unknown>
   /** Starts quitAndInstall; succeeds once the app begins quitting for the update. */
   readonly installAndRestart: Effect.Effect<void, unknown>
@@ -63,18 +75,40 @@ export const make = Effect.fn("Updater.make")(function* (dependencies: Dependenc
         })
       yield* platform.stageUpdate({
         differential: !downloaded,
-        onProgress: (percent) => {
-          if (!Number.isFinite(percent)) return
+        onProgress: (progress) => {
+          if (
+            !Number.isFinite(progress.percent) ||
+            !Number.isFinite(progress.transferred) ||
+            !Number.isFinite(progress.total) ||
+            !Number.isFinite(progress.bytesPerSecond)
+          )
+            return
           const current = state
 
           if (current.status !== "downloading" || current.version !== version) return
           // Charge up to 99 while the installer is still being verified and saved; 100 belongs to the ready state, so
           // the bar never sits full while the app is still working. Progress also never goes backwards: a delta
           // reports bytes of changed ranges, and a late range used to move the bar back down.
-          const rounded = Math.min(99, Math.max(0, Math.round(percent)))
+          const rounded = Math.min(99, Math.max(0, Math.round(progress.percent)))
+          const percent = current.progress === undefined ? rounded : Math.max(current.progress, rounded)
 
-          if (current.progress !== undefined && rounded <= current.progress) return
-          transition({ status: "downloading", version, progress: rounded })
+          // Speed and size change between whole percents, and a slow download can sit on one percent for a while, so
+          // publish those too instead of waiting for the bar to move.
+          if (
+            current.progress === percent &&
+            current.transferred === progress.transferred &&
+            current.total === progress.total &&
+            current.bytesPerSecond === progress.bytesPerSecond
+          )
+            return
+          transition({
+            status: "downloading",
+            version,
+            progress: percent,
+            transferred: progress.transferred,
+            total: progress.total,
+            bytesPerSecond: progress.bytesPerSecond,
+          })
         },
       })
       downloaded = version

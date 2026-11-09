@@ -60,12 +60,14 @@ const setup: Setup<typeof definition> = (ctx) => {
 
     const action = updaterAction(current)
     const progress = current.status === "downloading" ? (current.progress ?? 0) : undefined
+    const detail = current.status === "downloading" ? transferDetail(ctx, current) : undefined
     const run = action.run
 
     return {
       id: "update",
       label: ctx.t("status.label"),
       title: ctx.t(action.label, action.params),
+      detail,
       busy: current.status === "installing",
       progress,
       run: run ? () => act(run) : undefined,
@@ -116,6 +118,39 @@ const setup: Setup<typeof definition> = (ctx) => {
   // Beta builds answer the app menu's Check for Updates in the focused window instead of a native dialog. The
   // listener ends with the generation of the main side that sends it.
   createKeyed(updater, (client) => void client.on("check", () => act("check")))
+}
+
+/** Download size and speed shown beside the titlebar label while an update transfers. */
+function transferDetail(ctx: SetupContext<typeof definition>, state: Extract<UpdaterState, { status: "downloading" }>) {
+  if (state.transferred === undefined || state.total === undefined || state.total <= 0) return
+
+  const locale = ctx.locale.locale()
+
+  const size = ctx.t("transfer.size", {
+    transferred: formatBytes(locale, state.transferred),
+    total: formatBytes(locale, state.total),
+  })
+
+  if (state.bytesPerSecond === undefined || state.bytesPerSecond <= 0) return size
+
+  return ctx.t("transfer.detail", {
+    size,
+    speed: ctx.t("transfer.speed", { speed: formatBytes(locale, state.bytesPerSecond) }),
+  })
+}
+
+function formatBytes(locale: string, bytes: number) {
+  const units = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"] as const
+  const index = bytes > 0 ? Math.min(units.length - 1, Math.floor(Math.log10(bytes) / 3)) : 0
+  const value = bytes / 1000 ** index
+
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: units.at(index) ?? "byte",
+    // "short" bytes render as the singular "byte"; the long form pluralizes correctly.
+    unitDisplay: index === 0 ? "long" : "short",
+    maximumFractionDigits: value >= 100 || index === 0 ? 0 : 1,
+  }).format(value)
 }
 
 /**

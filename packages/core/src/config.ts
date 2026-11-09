@@ -481,6 +481,20 @@ export const layer = (options?: Options) =>
                 next = applyEdits(next, modify(next, ["shell"], patch.shell ?? undefined, options))
               for (const [server, config] of Object.entries(patch.mcp?.servers ?? {}))
                 next = applyEdits(next, modify(next, ["mcp", "servers", server], config ?? undefined, options))
+              for (const [providerID, config] of Object.entries(patch.providers ?? {})) {
+                if (config === null) {
+                  next = applyEdits(next, modify(next, ["providers", providerID], undefined, options))
+                  continue
+                }
+                // A client-written provider comes from the custom-provider form, which owns the whole model list.
+                // Write its fields separately so a patch that only changes one of them keeps the rest of the entry,
+                // and replace `models` outright so removing a row removes the model from the document too.
+                for (const key of ["name", "env", "package", "settings", "models"] as const) {
+                  const value = config[key]
+                  if (value !== undefined)
+                    next = applyEdits(next, modify(next, ["providers", providerID, key], value, options))
+                }
+              }
               return next
             },
             catch: (cause) => new FSUtil.FileSystemError({ method: "config.update", cause }),

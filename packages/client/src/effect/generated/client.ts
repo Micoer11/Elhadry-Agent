@@ -1039,10 +1039,15 @@ const EndpointProviderGet = (raw: RawClient["server.provider"]) => (input: Provi
     ),
   )
 
-const EndpointProviderModels = (raw: RawClient["server.provider"]) => (input: ProviderModelsInput) =>
+const EndpointProviderModels = (raw: RawClient["server.provider"]) => (input?: ProviderModelsInput) =>
   preserveEffect<ProviderModelsOutput>()(
     raw["provider.models"]({
-      payload: { baseURL: input["baseURL"], apiKey: input["apiKey"], headers: input["headers"] },
+      payload: {
+        providerID: input?.["providerID"],
+        baseURL: input?.["baseURL"],
+        apiKey: input?.["apiKey"],
+        headers: input?.["headers"],
+      },
     }).pipe(
       Effect.mapError(mapClientError),
       Effect.map((value) => value.data),

@@ -129,6 +129,76 @@ describe("Config", () => {
     ),
   )
 
+  it.live("update writes, merges, and removes providers", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) => {
+        const global = path.join(tmp.path, "global")
+        const project = path.join(tmp.path, "project")
+        const file = path.join(global, "elhadry.jsonc")
+
+        return Effect.promise(() => fs.mkdir(project, { recursive: true })).pipe(
+          Effect.andThen(
+            Effect.gen(function* () {
+              const config = yield* Config.Service
+              yield* config.update!({
+                providers: {
+                  free: {
+                    name: "Free LLMs",
+                    env: ["FREE_KEY"],
+                    package: "aisdk:@ai-sdk/openai-compatible",
+                    settings: { baseURL: "https://example.test/v1" },
+                    models: {
+                      "model/one": {
+                        name: "Model One",
+                        capabilities: { tools: true, temperature: false, reasoning: { supported: false } },
+                        limit: { context: 1000, output: 100 },
+                      },
+                    },
+                  },
+                },
+              })
+
+              expect(yield* Effect.promise(() => Bun.file(file).json())).toEqual({
+                providers: {
+                  free: {
+                    name: "Free LLMs",
+                    env: ["FREE_KEY"],
+                    package: "aisdk:@ai-sdk/openai-compatible",
+                    settings: { baseURL: "https://example.test/v1" },
+                    models: {
+                      "model/one": {
+                        name: "Model One",
+                        capabilities: { tools: true, temperature: false, reasoning: { supported: false } },
+                        limit: { context: 1000, output: 100 },
+                      },
+                    },
+                  },
+                },
+              })
+
+              // A patch that only changes one field keeps the rest of the provider entry.
+              yield* config.update!({ providers: { free: { name: "Free Models" } } })
+
+              expect(yield* Effect.promise(() => Bun.file(file).json())).toMatchObject({
+                providers: {
+                  free: {
+                    name: "Free Models",
+                    env: ["FREE_KEY"],
+                    models: { "model/one": { name: "Model One" } },
+                  },
+                },
+              })
+
+              yield* config.update!({ providers: { free: null } })
+
+              expect(yield* Effect.promise(() => Bun.file(file).json())).toEqual({ providers: {} })
+            }).pipe(Effect.provide(testLayer(project, global))),
+          ),
+        )
+      }),
+    ),
+  )
+
   it.live("excludes home-level claude and agents directories when global is disabled", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) => {

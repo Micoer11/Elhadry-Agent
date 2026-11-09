@@ -196,7 +196,10 @@ export const make = Effect.fn("PluginHost.make")(function* (
       },
     },
     provider: {
-      models: ProviderDiscovery.list,
+      models: (input) => {
+        if (input?.baseURL === undefined) return Effect.fail(new Error("provider.models requires a base URL"))
+        return ProviderDiscovery.list({ ...input, baseURL: input.baseURL })
+      },
       list: () => response(providers.available()),
       get: (input) =>
         providers

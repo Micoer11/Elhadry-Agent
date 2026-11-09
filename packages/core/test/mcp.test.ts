@@ -1126,6 +1126,46 @@ for (const entry of [
   )
 }
 
+testEffect(Layer.empty).effect("reconnects an MCP server after a transient startup failure", () =>
+  Effect.gen(function* () {
+    let failed = false
+    const server = yield* resourceServer({
+      respond: () => {
+        // Fail only the first initialize so the retry after the initial backoff succeeds. 501 is not a
+        // transient status, so the client does not retry it internally before the service reconnects.
+        if (failed) return undefined
+        failed = true
+        return new Response(null, { status: 501 })
+      },
+    })
+    yield* Effect.gen(function* () {
+      const service = yield* Mcp.Service
+      const status = () => Effect.runSync(service.servers()).find((item) => item.name === "resources")?.status
+      yield* advance(() => status()?.status === "connected")
+      expect(server.state.initializations).toBe(2)
+      expect(status()).toEqual({ status: "connected" })
+    }).pipe(Effect.provide(resourceMcpLayer(server.url)))
+  }),
+)
+
+testEffect(Layer.empty).effect("stops retrying an MCP server that keeps failing", () =>
+  Effect.gen(function* () {
+    const server = yield* resourceServer({
+      respond: () => new Response(null, { status: 501 }),
+    })
+    yield* Effect.gen(function* () {
+      const service = yield* Mcp.Service
+      const status = () => Effect.runSync(service.servers()).find((item) => item.name === "resources")?.status
+      // The initial attempt plus one retry per backoff: 1, 2, 5, 10, 30 and 60 seconds.
+      yield* advance(() => server.state.initializations === 7)
+      // Past the last backoff: a retry sequence that restarted itself would initialize again.
+      yield* drain
+      expect(server.state.initializations).toBe(7)
+      expect(status()?.status).toBe("failed")
+    }).pipe(Effect.provide(resourceMcpLayer(server.url)))
+  }),
+)
+
 test("reconnects and retries a tool call after the MCP session expires", async () => {
   await Effect.runPromise(
     Effect.scoped(

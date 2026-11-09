@@ -1041,6 +1041,13 @@ export const dict = {
   "settings.providers.section.connected": "Connected providers",
   "settings.providers.connected.empty": "No connected providers",
   "settings.providers.connected.environmentDescription": "Connected from your environment variables",
+  "settings.providers.refresh": "Refresh models",
+  "settings.providers.refresh.aria": "Refresh models for {{provider}}",
+  "settings.providers.refresh.success.title": "Models updated",
+  "settings.providers.refresh.success.description": "The model list for {{provider}} was updated.",
+  "settings.providers.refresh.empty.title": "No models found",
+  "settings.providers.refresh.empty.description":
+    "{{provider}} returned no models. Check the endpoint and API key.",
   "settings.providers.account.manage": "Manage {{provider}} accounts",
   "settings.providers.account.group": "Accounts",
   "settings.providers.account.add": "Add account",

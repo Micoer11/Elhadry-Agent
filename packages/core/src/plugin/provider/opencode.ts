@@ -145,7 +145,6 @@ function oauth(http: HttpClient.HttpClient) {
 export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Config.Service | Scope.Scope>({
   id: "opencode.provider.opencode",
   effect: Effect.fn(function* (ctx) {
-    const disableFree = ["1", "true"].includes(process.env.OPENCODE_DISABLE_FREE_MODELS?.toLowerCase() ?? "")
     const bus = yield* Bus.Service
     const client = yield* HttpClient.HttpClient
     // Every request here goes to the Console, which reads the User-Agent to tell which Elhadry Agent a member runs
@@ -295,33 +294,6 @@ export const OpencodePlugin = define<HttpClient.HttpClient | Bus.Service | Confi
     yield* publish(snapshot)
     yield* ctx.provider.transform((providers) => {
       if (integrated) ConfigProviderPlugin.integrate(providers, integrated)
-    })
-    yield* ctx.provider.transform((providers) => {
-      const item = providers.get(Provider.ID.opencode)
-      if (!item) return
-      const hasKey = Boolean(process.env.OPENCODE_API_KEY || snapshot.connection || item.provider.settings?.apiKey)
-      providers.update(item.provider.id, (provider) => {
-        if (!hasKey && !disableFree) {
-          provider.activation = "enabled"
-          provider.settings = { ...provider.settings, apiKey: "public" }
-        }
-      })
-    })
-    yield* ctx.model.transform((models) => {
-      const item = models.provider.get(Provider.ID.opencode)
-      if (!item) return
-      const hasKey = Boolean(
-        process.env.OPENCODE_API_KEY ||
-          snapshot.connection ||
-          (item.provider.settings?.apiKey && item.provider.settings.apiKey !== "public"),
-      )
-      if (hasKey) return
-      for (const model of models.list(item.provider.id)) {
-        if (!model.cost.some((cost) => cost.input > 0)) continue
-        models.update(item.provider.id, model.id, (draft) => {
-          draft.enabled = false
-        })
-      }
     })
     // The Console's config selects its provider only when the workspace enabled hosted search and the member's policy
     // allows it; otherwise its searches fail, so the provider is offered only then. The selection still merges as

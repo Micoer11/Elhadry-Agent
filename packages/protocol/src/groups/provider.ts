@@ -7,8 +7,13 @@ import { InvalidRequestError, ProviderNotFoundError, ServiceUnavailableError } f
 import { LocationQuery, locationQueryOpenApi } from "./location.js"
 
 const DiscoverModelsInput = Schema.Struct({
+  /**
+   * Existing provider to resolve the endpoint, headers, and stored credential from. When set, the server uses the
+   * provider's effective settings and ignores `baseURL`, `apiKey`, and `headers` that are omitted.
+   */
+  providerID: Schema.optional(Provider.ID),
   /** OpenAI-compatible server root, for example `https://api.example.com/v1`. */
-  baseURL: Schema.String,
+  baseURL: Schema.optional(Schema.String),
   apiKey: Schema.optional(Schema.String),
   headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 }).annotate({ identifier: "Provider.DiscoverModelsInput" })
@@ -72,12 +77,13 @@ export const ProviderGroup = HttpApiGroup.make("server.provider")
     HttpApiEndpoint.post("provider.models", "/api/provider/models", {
       payload: DiscoverModelsInput,
       success: Schema.Struct({ data: Schema.Array(DiscoveredModel) }),
-      error: InvalidRequestError,
+      error: [InvalidRequestError, ProviderNotFoundError],
     }).annotateMerge(
       OpenApi.annotations({
         identifier: "provider.models",
         summary: "Discover models",
-        description: "List the models an OpenAI-compatible endpoint serves, for the custom-provider dialog.",
+        description:
+          "List the models an OpenAI-compatible endpoint serves, for the custom-provider dialog and provider refreshes.",
       }),
     ),
   )

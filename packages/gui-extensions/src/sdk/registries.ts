@@ -536,6 +536,8 @@ export interface TitlebarItem {
   readonly placement?: "titlebar" | "channel"
   /** The visible label. */
   readonly label: string
+  /** Secondary text beside the label, such as a download's size and speed. Omit it to show the label alone. */
+  readonly detail?: string
   /** Accessible name when it differs from the visible label. */
   readonly title?: string
   /** The pill's icon. Defaults to a download arrow. */

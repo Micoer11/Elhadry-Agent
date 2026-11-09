@@ -97,36 +97,16 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
     }
 
     if (state.status === "available") {
-      const response = yield* promise(() =>
-        dialog.showMessageBox({
-          type: "info",
-          message: ctx.t("dialog.available.message", { version: state.version }),
-          title: ctx.t("dialog.available.title"),
-          buttons: [ctx.t("dialog.download"), ctx.t("dialog.later")],
-          defaultId: 0,
-          cancelId: 1,
-        }),
-      )
+      const staged = yield* updater.download
 
-      if (response.response === 0) yield* updater.download
+      if (staged.status === "ready") yield* updater.install
 
       return
     }
 
-    if (state.status !== "ready") return
-
-    const response = yield* promise(() =>
-      dialog.showMessageBox({
-        type: "info",
-        message: ctx.t("dialog.ready.message", { version: state.version }),
-        title: ctx.t("dialog.ready.title"),
-        buttons: [ctx.t("dialog.restart"), ctx.t("dialog.later")],
-        defaultId: 0,
-        cancelId: 1,
-      }),
-    )
-
-    if (response.response === 0) yield* updater.install
+    if (state.status === "ready" || state.status === "download-required") {
+      yield* updater.install
+    }
   })
 
   ctx.add(

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
 import type { UpdaterState } from "./contract"
-import { make, type Dependencies } from "./machine"
+import { make, type Dependencies, type DownloadProgress } from "./machine"
 
 const scopes: Scope.Closeable[] = []
 
@@ -20,8 +20,8 @@ async function setup(input?: {
   /** The release each platform check finds, in order; the last one repeats. "offline" fails the check. */
   checks?: readonly string[]
   stage?: () => Promise<void>
-  /** Percent values the platform reports while staging, in order. */
-  progress?: readonly number[]
+  /** Progress reports the platform emits while staging, in order. */
+  progress?: readonly DownloadProgress[]
   install?: () => Promise<void>
   /** Runs before the platform answers the given 0-based check, so a test can hold one check in flight. */
   gate?: (check: number) => Promise<void>
@@ -57,7 +57,7 @@ async function setup(input?: {
         Effect.tryPromise(async () => {
           calls.push(options.differential ? "download" : "download:full")
 
-          for (const percent of input?.progress ?? []) options.onProgress?.(percent)
+          for (const progress of input?.progress ?? []) options.onProgress?.(progress)
           await input?.stage?.()
         }),
       installAndRestart: Effect.suspend(() => {
@@ -411,16 +411,53 @@ describe("updater", () => {
     expect(app.calls).toEqual(["check"])
   })
 
-  test("publishes monotonic download progress that stays below 100 until ready", async () => {
-    const app = await setup({ progress: [12.4, 50.6, 9, 99.9] })
+  test("publishes monotonic download progress with size and speed until ready", async () => {
+    const app = await setup({
+      progress: [
+        { percent: 12.4, transferred: 1_000_000, total: 8_000_000, bytesPerSecond: 400_000 },
+        { percent: 50.6, transferred: 4_000_000, total: 8_000_000, bytesPerSecond: 800_000 },
+        { percent: 9, transferred: 4_200_000, total: 8_000_000, bytesPerSecond: 810_000 },
+        { percent: 99.9, transferred: 7_990_000, total: 8_000_000, bytesPerSecond: 900_000 },
+      ],
+    })
+
     await app.start()
     await app.download()
 
     expect(app.seen.filter((state) => state.status === "downloading")).toEqual([
       { status: "downloading", version: "2.0.0" },
-      { status: "downloading", version: "2.0.0", progress: 12 },
-      { status: "downloading", version: "2.0.0", progress: 51 },
-      { status: "downloading", version: "2.0.0", progress: 99 },
+      {
+        status: "downloading",
+        version: "2.0.0",
+        progress: 12,
+        transferred: 1_000_000,
+        total: 8_000_000,
+        bytesPerSecond: 400_000,
+      },
+      {
+        status: "downloading",
+        version: "2.0.0",
+        progress: 51,
+        transferred: 4_000_000,
+        total: 8_000_000,
+        bytesPerSecond: 800_000,
+      },
+      {
+        status: "downloading",
+        version: "2.0.0",
+        progress: 51,
+        transferred: 4_200_000,
+        total: 8_000_000,
+        bytesPerSecond: 810_000,
+      },
+      {
+        status: "downloading",
+        version: "2.0.0",
+        progress: 99,
+        transferred: 7_990_000,
+        total: 8_000_000,
+        bytesPerSecond: 900_000,
+      },
     ])
     expect(app.state()).toEqual({ status: "ready", version: "2.0.0" })
   })

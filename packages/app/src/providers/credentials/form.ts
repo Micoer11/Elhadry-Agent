@@ -11,7 +11,7 @@ const OPENAI_COMPATIBLE = "aisdk:@ai-sdk/openai-compatible"
 
 type ProviderConfig = NonNullable<NonNullable<Extract<ConfigEntry, { type: "document" }>["info"]["providers"]>[string]>
 
-type ModelConfig = NonNullable<ProviderConfig["models"]>[string]
+export type ModelConfig = NonNullable<ProviderConfig["models"]>[string]
 
 type Translator = (key: string, vars?: Record<string, string | number | boolean>) => string
 
@@ -128,39 +128,7 @@ export function validateCustomProvider(input: ValidateArgs) {
     .map((m) => ({ id: m.id.trim(), name: m.name.trim() || m.id.trim(), meta: m.meta }))
     .filter((m) => !!m.id)
 
-  const modelConfig = Object.fromEntries(
-    filled.map((m) => {
-      const capabilities: ConfigModelCapabilities = { tools: m.meta?.capabilities?.tools ?? true }
-
-      if (m.meta?.capabilities?.input) capabilities.input = [...m.meta.capabilities.input]
-
-      if (m.meta?.capabilities?.output) capabilities.output = [...m.meta.capabilities.output]
-
-      const temperature = m.meta?.capabilities?.temperature
-
-      if (temperature !== null && temperature !== undefined) capabilities.temperature = temperature
-
-      if (m.meta?.reasoning) capabilities.reasoning = m.meta.reasoning
-
-      const config: ModelConfig = { capabilities }
-
-      if (m.name !== m.id) config.name = m.name
-
-      if (m.meta?.limit) {
-        const limit: NonNullable<ModelConfig["limit"]> = {}
-
-        if (m.meta.limit.context !== null && m.meta.limit.context !== undefined) limit.context = m.meta.limit.context
-
-        if (m.meta.limit.input !== null && m.meta.limit.input !== undefined) limit.input = m.meta.limit.input
-
-        if (m.meta.limit.output !== null && m.meta.limit.output !== undefined) limit.output = m.meta.limit.output
-
-        config.limit = limit
-      }
-
-      return [m.id, config]
-    }),
-  )
+  const modelConfig = modelConfigs(filled)
 
   const modelsError = filled.length === 0 ? input.t("provider.custom.error.models.required") : undefined
 
@@ -231,6 +199,53 @@ export function validateCustomProvider(input: ValidateArgs) {
       config,
     },
   }
+}
+
+/** Builds config models from form rows or discovery results, keyed by the trimmed model id. */
+export function modelConfigs(
+  models: ReadonlyArray<{ id: string; name?: string | null; meta?: ModelMeta }>,
+): Record<string, ModelConfig> {
+  return Object.fromEntries(
+    models.flatMap((model): Array<[string, ModelConfig]> => {
+      const id = model.id.trim()
+
+      if (!id) return []
+
+      const name = (model.name ?? "").trim() || id
+      const capabilities: ConfigModelCapabilities = { tools: model.meta?.capabilities?.tools ?? true }
+
+      if (model.meta?.capabilities?.input) capabilities.input = [...model.meta.capabilities.input]
+
+      if (model.meta?.capabilities?.output) capabilities.output = [...model.meta.capabilities.output]
+
+      const temperature = model.meta?.capabilities?.temperature
+
+      if (temperature !== null && temperature !== undefined) capabilities.temperature = temperature
+
+      if (model.meta?.reasoning) capabilities.reasoning = model.meta.reasoning
+
+      const config: ModelConfig = { capabilities }
+
+      if (name !== id) config.name = name
+
+      if (model.meta?.limit) {
+        const limit: NonNullable<ModelConfig["limit"]> = {}
+
+        if (model.meta.limit.context !== null && model.meta.limit.context !== undefined)
+          limit.context = model.meta.limit.context
+
+        if (model.meta.limit.input !== null && model.meta.limit.input !== undefined)
+          limit.input = model.meta.limit.input
+
+        if (model.meta.limit.output !== null && model.meta.limit.output !== undefined)
+          limit.output = model.meta.limit.output
+
+        config.limit = limit
+      }
+
+      return [[id, config]]
+    }),
+  )
 }
 
 let row = 0

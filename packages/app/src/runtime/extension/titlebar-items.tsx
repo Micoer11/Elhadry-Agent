@@ -114,6 +114,13 @@ function TitlebarItemButton(props: { item: TitlebarItem; vertical?: boolean }) {
           </Show>
         </span>
         {label()}
+        <Show when={props.item.detail}>
+          {(detail) => (
+            <span class="shrink-0 whitespace-nowrap text-[11px] leading-4 tabular-nums text-v2-text-text-muted">
+              {detail()}
+            </span>
+          )}
+        </Show>
       </button>
     </div>
   )

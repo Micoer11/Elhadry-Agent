@@ -1,7 +1,7 @@
 import { app, autoUpdater } from "electron"
 import pkg from "electron-updater"
 import { Effect } from "effect"
-import type { Platform } from "./machine"
+import type { DownloadProgress, Platform } from "./machine"
 
 const updateClient = pkg.autoUpdater
 
@@ -31,7 +31,7 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
 
   const stageUpdate = (options: {
     readonly differential: boolean
-    readonly onProgress?: (percent: number) => void
+    readonly onProgress?: (progress: DownloadProgress) => void
   }) =>
     Effect.gen(function* () {
       // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
@@ -44,7 +44,7 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
       // electron-updater wires its progress callback only when a listener exists as the download starts, so subscribe
       // here and remove the listener as soon as the download settles.
       const onProgress = options.onProgress
-      const progress = (info: { readonly percent: number }) => onProgress?.(info.percent)
+      const progress = (info: DownloadProgress) => onProgress?.(info)
 
       if (onProgress) updateClient.on("download-progress", progress)
 

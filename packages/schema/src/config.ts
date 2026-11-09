@@ -122,6 +122,7 @@ export class Info extends Schema.Class<Info>("Config.Info")({
  */
 export class ProviderPatch extends Schema.Class<ProviderPatch>("Config.ProviderPatch")({
   name: Schema.String.pipe(optional),
+  env: Schema.Array(Schema.String).pipe(optional),
   package: Schema.String.pipe(optional),
   settings: ConfigProvider.Settings.pipe(optional),
   models: Schema.Record(
@@ -132,6 +133,13 @@ export class ProviderPatch extends Schema.Class<ProviderPatch>("Config.ProviderP
         tools: Schema.Boolean.pipe(optional),
         input: Schema.Array(Schema.String).pipe(optional),
         output: Schema.Array(Schema.String).pipe(optional),
+        temperature: Schema.Boolean.pipe(optional),
+        reasoning: ConfigProvider.Reasoning.pipe(optional),
+      }).pipe(optional),
+      limit: Schema.Struct({
+        context: Schema.Int.pipe(optional),
+        input: Schema.Int.pipe(optional),
+        output: Schema.Int.pipe(optional),
       }).pipe(optional),
     }),
   ).pipe(optional),
