@@ -15,6 +15,26 @@ export type McpCatalogEntry = {
 
 export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
   {
+    "id": "adp",
+    "name": "ADP",
+    "description": "Payroll, HR, and workforce data from your ADP account.",
+    "url": "https://mcp.adp.com/mcp",
+    "host": "adp.com",
+    "auth": "oauth",
+    "source": "https://developers.adp.com/",
+    "color": "#D0271D"
+  },
+  {
+    "id": "airbyte",
+    "name": "Airbyte",
+    "description": "Data pipelines, connections, and sync status from Airbyte Cloud.",
+    "url": "https://mcp.airbyte.com/mcp",
+    "host": "airbyte.com",
+    "auth": "oauth",
+    "source": "https://docs.airbyte.com/ai-agents/mcp-server",
+    "color": "#615EFF"
+  },
+  {
     "id": "airtable",
     "name": "Airtable",
     "description": "Bases, tables, and records from your Airtable workspace.",
@@ -45,6 +65,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#06B6D4"
   },
   {
+    "id": "alpaca",
+    "name": "Alpaca",
+    "description": "Trading accounts, orders, positions, and market data from Alpaca.",
+    "url": "https://mcp.alpaca.markets/mcp",
+    "host": "alpaca.markets",
+    "auth": "none",
+    "source": "https://docs.alpaca.markets/docs/alpaca-mcp-server",
+    "color": "#F5C518"
+  },
+  {
+    "id": "alpha-vantage",
+    "name": "Alpha Vantage",
+    "description": "Stocks, forex, and economic indicators from Alpha Vantage.",
+    "url": "https://mcp.alphavantage.co/mcp",
+    "host": "alphavantage.co",
+    "auth": "oauth",
+    "source": "https://www.alphavantage.co/documentation/",
+    "color": "#1E88E5"
+  },
+  {
     "id": "amplitude",
     "name": "Amplitude",
     "description": "Amplitude analytics: charts, dashboards, experiments, flags.",
@@ -53,6 +93,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
     "color": "#8B5CF6"
+  },
+  {
+    "id": "apify",
+    "name": "Apify",
+    "description": "Run Apify actors and fetch datasets from your Apify account.",
+    "url": "https://mcp.apify.com/",
+    "host": "apify.com",
+    "auth": "oauth",
+    "source": "https://docs.apify.com/platform/integrations/mcp",
+    "color": "#00B4D8"
+  },
+  {
+    "id": "apollo",
+    "name": "Apollo.io",
+    "description": "Contacts, accounts, and sales engagement data from Apollo.io.",
+    "url": "https://mcp.apollo.io/mcp",
+    "host": "apollo.io",
+    "auth": "oauth",
+    "source": "https://www.apollo.io/product/mcp",
+    "color": "#FF7A00"
   },
   {
     "id": "appwrite",
@@ -75,6 +135,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#F06A6A"
   },
   {
+    "id": "assemblyai",
+    "name": "AssemblyAI",
+    "description": "Transcribe and analyze audio with AssemblyAI.",
+    "url": "https://mcp.assemblyai.com/mcp",
+    "host": "assemblyai.com",
+    "auth": "oauth",
+    "source": "https://www.assemblyai.com/docs/mcp-server",
+    "color": "#5C6BFF"
+  },
+  {
     "id": "atlassian",
     "name": "Atlassian",
     "description": "Jira issues and Confluence pages via Atlassian's hosted remote MCP.",
@@ -95,6 +165,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#EC4899"
   },
   {
+    "id": "aweber",
+    "name": "AWeber",
+    "description": "Email campaigns, subscribers, and lists from AWeber.",
+    "url": "https://mcp.aweber.com/mcp",
+    "host": "aweber.com",
+    "auth": "oauth",
+    "source": "https://mcp.aweber.com/docs",
+    "color": "#1F70C1"
+  },
+  {
     "id": "aws-knowledge",
     "name": "AWS Knowledge",
     "description": "Authoritative AWS docs, API references, and best practices.",
@@ -103,6 +183,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "none",
     "source": "https://awslabs.github.io/mcp/servers/aws-knowledge-mcp-server/",
     "color": "#EF4444"
+  },
+  {
+    "id": "basecamp",
+    "name": "Basecamp",
+    "description": "Projects, to-dos, messages, and files from Basecamp.",
+    "url": "https://mcp.basecamp.com/mcp",
+    "host": "basecamp.com",
+    "auth": "oauth",
+    "source": "https://basecamp.com/ai",
+    "color": "#5ECC62"
+  },
+  {
+    "id": "beehiiv",
+    "name": "beehiiv",
+    "description": "Newsletters, subscribers, and posts from beehiiv.",
+    "url": "https://mcp.beehiiv.com/mcp",
+    "host": "beehiiv.com",
+    "auth": "oauth",
+    "source": "https://www.beehiiv.com/mcp",
+    "color": "#FFCC00"
   },
   {
     "id": "betterstack",
@@ -123,6 +223,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developer.box.com/guides/box-mcp",
     "color": "#0061D5"
+  },
+  {
+    "id": "braze",
+    "name": "Braze",
+    "description": "Campaigns, canvases, and engagement data from Braze.",
+    "url": "https://mcp.braze.com/mcp",
+    "host": "braze.com",
+    "auth": "oauth",
+    "source": "https://www.braze.com/docs/mcp",
+    "color": "#FF5C39"
+  },
+  {
+    "id": "buffer",
+    "name": "Buffer",
+    "description": "Social posts, channels, and analytics from Buffer.",
+    "url": "https://mcp.buffer.com/mcp",
+    "host": "buffer.com",
+    "auth": "oauth",
+    "source": "https://buffer.com/mcp",
+    "color": "#168EEA"
   },
   {
     "id": "buildkite",
@@ -183,6 +303,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://clerk.com/docs/guides/ai/mcp/clerk-mcp-server",
     "color": "#6C47FF"
+  },
+  {
+    "id": "clevertap",
+    "name": "CleverTap",
+    "description": "Segments, campaigns, and engagement data from CleverTap.",
+    "url": "https://mcp.clevertap.com/mcp",
+    "host": "clevertap.com",
+    "auth": "oauth",
+    "source": "https://developer.clevertap.com/docs",
+    "color": "#F2545B"
   },
   {
     "id": "clickhouse",
@@ -285,6 +415,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#84CC16"
   },
   {
+    "id": "customer-io",
+    "name": "Customer.io",
+    "description": "Journeys, campaigns, and customer profiles from Customer.io.",
+    "url": "https://mcp.customer.io/mcp",
+    "host": "customer.io",
+    "auth": "oauth",
+    "source": "https://docs.customer.io/ai/mcp-server",
+    "color": "#6C5CE7"
+  },
+  {
     "id": "datadog",
     "name": "Datadog",
     "description": "Logs, monitors, dashboards, and incidents from Datadog.",
@@ -345,6 +485,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#111111"
   },
   {
+    "id": "exa",
+    "name": "Exa",
+    "description": "Web search, page fetching, and research via Exa.",
+    "url": "https://mcp.exa.ai/mcp",
+    "host": "exa.ai",
+    "auth": "none",
+    "source": "https://docs.exa.ai/reference/exa-mcp",
+    "color": "#6C63FF"
+  },
+  {
     "id": "fal",
     "name": "fal",
     "description": "Generate images, video, and audio with fal models.",
@@ -373,6 +523,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/",
     "color": "#F24E1E"
+  },
+  {
+    "id": "finnhub",
+    "name": "Finnhub",
+    "description": "Stock quotes, company fundamentals, and market news from Finnhub.",
+    "url": "https://mcp.finnhub.io/mcp",
+    "host": "finnhub.io",
+    "auth": "oauth",
+    "source": "https://finnhub.io/docs/api",
+    "color": "#11A683"
+  },
+  {
+    "id": "firecrawl",
+    "name": "Firecrawl",
+    "description": "Scrape, crawl, and search the web with Firecrawl.",
+    "url": "https://mcp.firecrawl.dev/v2/mcp",
+    "host": "firecrawl.dev",
+    "auth": "none",
+    "source": "https://docs.firecrawl.dev/mcp-server",
+    "color": "#FF6B00"
   },
   {
     "id": "fireflies",
@@ -405,6 +575,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#EC4899"
   },
   {
+    "id": "gitbook",
+    "name": "GitBook",
+    "description": "Documentation spaces, pages, and search from GitBook.",
+    "url": "https://mcp.gitbook.com/mcp",
+    "host": "gitbook.com",
+    "auth": "oauth",
+    "source": "https://docs.gitbook.com/",
+    "color": "#346DDB"
+  },
+  {
     "id": "github",
     "name": "GitHub",
     "description": "Repositories, issues, pull requests, and code search on GitHub.",
@@ -435,6 +615,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#F97316"
   },
   {
+    "id": "gong",
+    "name": "Gong",
+    "description": "Sales calls, transcripts, and revenue insights from Gong.",
+    "url": "https://mcp.gong.io/mcp",
+    "host": "gong.io",
+    "auth": "oauth",
+    "source": "https://www.gong.io/",
+    "color": "#7A3FF2"
+  },
+  {
+    "id": "gorgias",
+    "name": "Gorgias",
+    "description": "Support tickets, customers, and help center content from Gorgias.",
+    "url": "https://mcp.gorgias.com/mcp",
+    "host": "gorgias.com",
+    "auth": "none",
+    "source": "https://docs.gorgias.com/",
+    "color": "#FF5A5F"
+  },
+  {
     "id": "grafana",
     "name": "Grafana",
     "description": "Query metrics, logs, dashboards, alerts, and incidents from Grafana Cloud.",
@@ -453,6 +653,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://docs.granola.ai/mcp",
     "color": "#F5C518"
+  },
+  {
+    "id": "greenhouse",
+    "name": "Greenhouse",
+    "description": "Jobs, candidates, and recruiting data from Greenhouse.",
+    "url": "https://mcp.greenhouse.io/mcp",
+    "host": "greenhouse.io",
+    "auth": "oauth",
+    "source": "https://developers.greenhouse.io/",
+    "color": "#24A47F"
+  },
+  {
+    "id": "harness",
+    "name": "Harness",
+    "description": "Pipelines, deployments, and service health from Harness.",
+    "url": "https://mcp.harness.io/mcp",
+    "host": "harness.io",
+    "auth": "oauth",
+    "source": "https://developer.harness.io/",
+    "color": "#00ADE4"
   },
   {
     "id": "heroku",
@@ -485,6 +705,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#030304"
   },
   {
+    "id": "honeycomb",
+    "name": "Honeycomb",
+    "description": "Traces, queries, and observability data from Honeycomb.",
+    "url": "https://mcp.honeycomb.io/mcp",
+    "host": "honeycomb.io",
+    "auth": "oauth",
+    "source": "https://docs.honeycomb.io/mcp",
+    "color": "#F5A623"
+  },
+  {
     "id": "hugging_face",
     "name": "Hugging Face",
     "description": "Models, datasets, Spaces, and papers from the Hugging Face Hub.",
@@ -515,6 +745,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#6366F1"
   },
   {
+    "id": "instacart",
+    "name": "Instacart",
+    "description": "Grocery search, recipes, and shopping lists via Instacart.",
+    "url": "https://mcp.instacart.com/mcp",
+    "host": "instacart.com",
+    "auth": "none",
+    "source": "https://docs.instacart.com/",
+    "color": "#43B02A"
+  },
+  {
     "id": "intercom",
     "name": "Intercom",
     "description": "Conversations, tickets, and customer data from Intercom.",
@@ -523,6 +763,36 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developers.intercom.com/docs/guides/mcp",
     "color": "#6AFDEF"
+  },
+  {
+    "id": "jina",
+    "name": "Jina AI",
+    "description": "Web reading, search, and embeddings with Jina AI.",
+    "url": "https://mcp.jina.ai/sse",
+    "host": "jina.ai",
+    "auth": "none",
+    "source": "https://jina.ai/",
+    "color": "#EB6161"
+  },
+  {
+    "id": "jotform",
+    "name": "Jotform",
+    "description": "Forms, submissions, and responses from Jotform.",
+    "url": "https://mcp.jotform.com/mcp",
+    "host": "jotform.com",
+    "auth": "oauth",
+    "source": "https://www.jotform.com/mcp",
+    "color": "#FF6100"
+  },
+  {
+    "id": "kinsta",
+    "name": "Kinsta",
+    "description": "WordPress sites, environments, and hosting data from Kinsta.",
+    "url": "https://mcp.kinsta.com/mcp",
+    "host": "kinsta.com",
+    "auth": "oauth",
+    "source": "https://kinsta.com/docs/",
+    "color": "#533BE5"
   },
   {
     "id": "kiwi",
@@ -563,6 +833,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://linear.app/docs/mcp",
     "color": "#5E6AD2"
+  },
+  {
+    "id": "mailerlite",
+    "name": "MailerLite",
+    "description": "Subscribers, campaigns, and automations from MailerLite.",
+    "url": "https://mcp.mailerlite.com/mcp",
+    "host": "mailerlite.com",
+    "auth": "oauth",
+    "source": "https://developers.mailerlite.com/mcp",
+    "color": "#09C269"
+  },
+  {
+    "id": "mapbox",
+    "name": "Mapbox",
+    "description": "Mapbox documentation search for maps, geocoding, and navigation.",
+    "url": "https://mcp-docs.mapbox.com/mcp",
+    "host": "mapbox.com",
+    "auth": "none",
+    "source": "https://docs.mapbox.com/",
+    "color": "#4264FB"
   },
   {
     "id": "mercury",
@@ -635,6 +925,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#10B981"
   },
   {
+    "id": "namecheap",
+    "name": "Namecheap",
+    "description": "Domains, DNS, and hosting from your Namecheap account.",
+    "url": "https://mcp.namecheap.com/mcp",
+    "host": "namecheap.com",
+    "auth": "oauth",
+    "source": "https://www.namecheap.com/support/api/",
+    "color": "#DE3723"
+  },
+  {
     "id": "neon",
     "name": "Neon",
     "description": "Neon serverless Postgres: projects, branches, and SQL.",
@@ -675,6 +975,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#000000"
   },
   {
+    "id": "omnisend",
+    "name": "Omnisend",
+    "description": "Email, SMS, and automation data from Omnisend.",
+    "url": "https://mcp.omnisend.com/mcp",
+    "host": "omnisend.com",
+    "auth": "oauth",
+    "source": "https://api-docs.omnisend.com/reference/mcp-server",
+    "color": "#00C08B"
+  },
+  {
+    "id": "otter",
+    "name": "Otter.ai",
+    "description": "Meeting transcripts, summaries, and action items from Otter.ai.",
+    "url": "https://mcp.otter.ai/mcp",
+    "host": "otter.ai",
+    "auth": "oauth",
+    "source": "https://otter.ai/",
+    "color": "#00B2A9"
+  },
+  {
     "id": "pagerduty",
     "name": "PagerDuty",
     "description": "Incidents, schedules, and on-call information from PagerDuty.",
@@ -703,6 +1023,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developer.paypal.com/tools/mcp-server/",
     "color": "#003087"
+  },
+  {
+    "id": "personio",
+    "name": "Personio",
+    "description": "Employees, absences, and HR workflows from Personio.",
+    "url": "https://mcp.personio.de/mcp",
+    "host": "personio.com",
+    "auth": "oauth",
+    "source": "https://developer.personio.de/mcp",
+    "color": "#FF4D4D"
   },
   {
     "id": "plaid",
@@ -785,6 +1115,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#E1F54B"
   },
   {
+    "id": "recorded-future",
+    "name": "Recorded Future",
+    "description": "Threat intelligence, alerts, and risk context from Recorded Future.",
+    "url": "https://mcp.recordedfuture.com/mcp",
+    "host": "recordedfuture.com",
+    "auth": "oauth",
+    "source": "https://www.recordedfuture.com/",
+    "color": "#6A4C93"
+  },
+  {
+    "id": "render",
+    "name": "Render",
+    "description": "Web services, databases, and deploys on Render.",
+    "url": "https://mcp.render.com/mcp",
+    "host": "render.com",
+    "auth": "oauth",
+    "source": "https://render.com/docs/mcp-server",
+    "color": "#46E3B7"
+  },
+  {
     "id": "rentahuman",
     "name": "RentAHuman",
     "description": "Find people and manage real-world work through RentAHuman.",
@@ -815,6 +1165,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#111111"
   },
   {
+    "id": "rippling",
+    "name": "Rippling",
+    "description": "Employees, payroll, and HR data from Rippling.",
+    "url": "https://mcp.rippling.com/mcp",
+    "host": "rippling.com",
+    "auth": "oauth",
+    "source": "https://developer.rippling.com/",
+    "color": "#F5C400"
+  },
+  {
     "id": "robinhood",
     "name": "Robinhood",
     "description": "Robinhood agentic trading: portfolio, balances, and orders.",
@@ -823,6 +1183,26 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://robinhood.com/us/en/support/articles/agentic-trading-overview/",
     "color": "#EF4444"
+  },
+  {
+    "id": "rootly",
+    "name": "Rootly",
+    "description": "Incidents, alerts, and on-call workflows from Rootly.",
+    "url": "https://mcp.rootly.com/mcp",
+    "host": "rootly.com",
+    "auth": "oauth",
+    "source": "https://docs.rootly.com/",
+    "color": "#FF4F79"
+  },
+  {
+    "id": "runway",
+    "name": "Runway",
+    "description": "Generate and edit video with Runway's AI models.",
+    "url": "https://mcp.runwayml.com/mcp",
+    "host": "runwayml.com",
+    "auth": "oauth",
+    "source": "https://docs.dev.runwayml.com/",
+    "color": "#111827"
   },
   {
     "id": "sanity",
@@ -855,6 +1235,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#362D59"
   },
   {
+    "id": "similarweb",
+    "name": "Similarweb",
+    "description": "Website traffic, rankings, and market intelligence from Similarweb.",
+    "url": "https://mcp.similarweb.com/mcp",
+    "host": "similarweb.com",
+    "auth": "oauth",
+    "source": "https://developers.similarweb.com/mcp",
+    "color": "#1F3BB3"
+  },
+  {
     "id": "slack",
     "name": "Slack",
     "description": "Search messages, read channels, and post updates in Slack.",
@@ -865,6 +1255,36 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#4A154B"
   },
   {
+    "id": "smartsheet",
+    "name": "Smartsheet",
+    "description": "Sheets, rows, and workspace data from Smartsheet.",
+    "url": "https://mcp.smartsheet.com/mcp",
+    "host": "smartsheet.com",
+    "auth": "oauth",
+    "source": "https://developers.smartsheet.com/",
+    "color": "#00A9A5"
+  },
+  {
+    "id": "sprinklr",
+    "name": "Sprinklr",
+    "description": "Social listening, publishing, and engagement from Sprinklr.",
+    "url": "https://mcp.sprinklr.com/mcp",
+    "host": "sprinklr.com",
+    "auth": "oauth",
+    "source": "https://dev.sprinklr.com/",
+    "color": "#0057FF"
+  },
+  {
+    "id": "sprout-social",
+    "name": "Sprout Social",
+    "description": "Social posts, analytics, and engagement from Sprout Social.",
+    "url": "https://mcp.sproutsocial.com/mcp",
+    "host": "sproutsocial.com",
+    "auth": "oauth",
+    "source": "https://api.sproutsocial.com/docs",
+    "color": "#59CB59"
+  },
+  {
     "id": "square",
     "name": "Square",
     "description": "Catalog, orders, and payments via Square's hosted MCP.",
@@ -873,6 +1293,36 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developer.squareup.com/docs/mcp",
     "color": "#3E4348"
+  },
+  {
+    "id": "squarespace",
+    "name": "Squarespace",
+    "description": "Domains, sites, and commerce tools from Squarespace.",
+    "url": "https://mcp.squarespace.com/mcp",
+    "host": "squarespace.com",
+    "auth": "none",
+    "source": "https://developers.squarespace.com/",
+    "color": "#111111"
+  },
+  {
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "description": "Search Stack Overflow questions, answers, and tags.",
+    "url": "https://mcp.stackoverflow.com",
+    "host": "stackoverflow.com",
+    "auth": "oauth",
+    "source": "https://stackoverflow.blog/mcp/",
+    "color": "#F48024"
+  },
+  {
+    "id": "statsig",
+    "name": "Statsig",
+    "description": "Feature gates, experiments, and analytics from Statsig.",
+    "url": "https://api.statsig.com/v1/mcp",
+    "host": "statsig.com",
+    "auth": "oauth",
+    "source": "https://docs.statsig.com/mcp",
+    "color": "#4F46E5"
   },
   {
     "id": "strava",
@@ -893,6 +1343,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://docs.stripe.com/mcp",
     "color": "#635BFF"
+  },
+  {
+    "id": "sumo-logic",
+    "name": "Sumo Logic",
+    "description": "Logs, metrics, and observability queries from Sumo Logic.",
+    "url": "https://mcp.sumologic.com/mcp",
+    "host": "sumologic.com",
+    "auth": "oauth",
+    "source": "https://help.sumologic.com/",
+    "color": "#1B4DE4"
   },
   {
     "id": "supabase",
@@ -975,6 +1435,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "color": "#000000"
   },
   {
+    "id": "vultr",
+    "name": "Vultr",
+    "description": "Cloud instances, storage, and networking from Vultr.",
+    "url": "https://mcp.vultr.com/mcp",
+    "host": "vultr.com",
+    "auth": "oauth",
+    "source": "https://docs.vultr.com/",
+    "color": "#007BFC"
+  },
+  {
     "id": "webflow",
     "name": "Webflow",
     "description": "Sites, CMS collections, and pages via Webflow's hosted MCP.",
@@ -983,6 +1453,16 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developers.webflow.com/mcp/reference/getting-started",
     "color": "#146EF5"
+  },
+  {
+    "id": "wise",
+    "name": "Wise",
+    "description": "Transfers, balances, and payment data from Wise.",
+    "url": "https://mcp.wise.com/mcp",
+    "host": "wise.com",
+    "auth": "oauth",
+    "source": "https://docs.wise.com/",
+    "color": "#9FE870"
   },
   {
     "id": "wix",
@@ -1013,5 +1493,25 @@ export const MCP_CATALOG: ReadonlyArray<McpCatalogEntry> = [
     "auth": "oauth",
     "source": "https://developer.wordpress.com/docs/mcp/",
     "color": "#8B5CF6"
+  },
+  {
+    "id": "xero",
+    "name": "Xero",
+    "description": "Invoices, contacts, and accounting data from Xero.",
+    "url": "https://mcp.xero.com/mcp",
+    "host": "xero.com",
+    "auth": "oauth",
+    "source": "https://developer.xero.com/",
+    "color": "#13B5EA"
+  },
+  {
+    "id": "zendesk",
+    "name": "Zendesk",
+    "description": "Tickets, users, and help center content from Zendesk.",
+    "url": "https://mcp.zendesk.com/mcp",
+    "host": "zendesk.com",
+    "auth": "oauth",
+    "source": "https://developer.zendesk.com/",
+    "color": "#03363D"
   }
 ]
