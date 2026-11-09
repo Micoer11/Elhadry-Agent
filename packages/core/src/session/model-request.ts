@@ -50,12 +50,20 @@ const GENERATION_KEYS = new Set(Object.keys(GenerationOptions.fields))
 const OUTPUT_TOKEN_FALLBACK = 32_000
 // No reply needs more, however much the model allows.
 const OUTPUT_TOKEN_MAX = 256_000
+// A summary needs far less than a full reply, and asking for the rest of a large window can exceed the provider's
+// real context once it counts its own template and tool tokens.
+const COMPACTION_OUTPUT_MAX = 32_000
 // Prompt text is estimated at about 4 characters per token, which can run low on dense text such as code.
 const ESTIMATE_ERROR = 0.15
 // Share of the window a turn leaves unused when its output limit is fitted to the room left. Providers count a few
 // tokens more than we do (chat template, tool schemas), and strict ones reject input plus output past the window.
 // Compaction sizes its summary against its own reserve instead.
 const WINDOW_HEADROOM = 0.01
+// A model whose output limit fills most of the window can only use it with a near-empty prompt. Some providers also
+// advertise a window larger than their endpoint enforces, so fit the output against a reserve of the window instead.
+const WINDOW_RESERVE_SHARE = 0.05
+const WINDOW_RESERVE_MIN = 2_000
+const WINDOW_RESERVE_MAX = 16_000
 // Never ask for less; only reachable with automatic compaction off, since it keeps the window from filling this far.
 const OUTPUT_TOKEN_MIN = 1_024
 
@@ -88,13 +96,25 @@ export interface Input {
 }
 
 /** The default output limit: the catalog limit, fitted to the room the prompt leaves in the context window. */
-export const outputLimit = (limit: Model.Info["limit"], inputTokens?: Input["inputTokens"], headroom = 0) => {
-  const requested = Math.min(limit.output > 0 ? limit.output : OUTPUT_TOKEN_FALLBACK, OUTPUT_TOKEN_MAX)
+export const outputLimit = (
+  limit: Model.Info["limit"],
+  inputTokens?: Input["inputTokens"],
+  headroom = 0,
+  max = OUTPUT_TOKEN_MAX,
+) => {
+  const requested = Math.min(limit.output > 0 ? limit.output : OUTPUT_TOKEN_FALLBACK, OUTPUT_TOKEN_MAX, max)
   if (inputTokens === undefined || limit.context <= 0) return requested
+  // Only models whose output limit nearly fills the window need this: their room-based limit is most of the window,
+  // where provider accounting and an over-advertised window can push input plus output past the real limit.
+  const reserve =
+    requested >= limit.context * 0.75
+      ? Math.min(WINDOW_RESERVE_MAX, Math.max(WINDOW_RESERVE_MIN, Math.floor(limit.context * WINDOW_RESERVE_SHARE)))
+      : 0
   const room =
     Math.floor(limit.context * (1 - headroom)) -
     inputTokens.measured -
-    Math.ceil(inputTokens.estimated * (1 + ESTIMATE_ERROR))
+    Math.ceil(inputTokens.estimated * (1 + ESTIMATE_ERROR)) -
+    reserve
   return Math.min(requested, Math.max(OUTPUT_TOKEN_MIN, room))
 }
 
@@ -270,7 +290,7 @@ export const layer = Layer.effect(
             kind === "primary"
               ? { maxTokens: outputLimit(model.limit, input.inputTokens, WINDOW_HEADROOM) }
               : kind === "compaction"
-                ? { maxTokens: outputLimit(model.limit, input.inputTokens) }
+                ? { maxTokens: outputLimit(model.limit, input.inputTokens, 0, COMPACTION_OUTPUT_MAX) }
                 : {},
         },
         Object.fromEntries(Array.from(given, ([d, t]) => [t.name, d])),

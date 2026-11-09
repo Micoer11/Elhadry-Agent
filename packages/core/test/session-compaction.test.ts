@@ -873,6 +873,30 @@ it.effect("compaction keeps the output limit for a request that fits its target"
   }),
 )
 
+it.effect("compaction caps the summary output when the model's output limit fills the window", () =>
+  Effect.gen(function* () {
+    requests = []
+    const session = yield* insertSession(Session.ID.make("ses_compaction_large_output"))
+    const context = {
+      ...loaded(session, [textUser("Summarize the conversation so far")]),
+      // Nous Portal advertises Step 3.7 Flash with a 256k window and a 256k completion limit.
+      model: SessionRunnerModel.resolved(model, {
+        capabilities: { tools: true, input: ["text"], output: ["text"] },
+        cost,
+        limit: { context: 262_144, output: 256_000 },
+      }),
+    }
+    const bus = yield* Bus.Service
+    const compaction = yield* SessionCompaction.Service
+    const inputID = SessionMessage.ID.create()
+    yield* bus.publish(SessionEvent.Compaction.Started, { sessionID: session.id, reason: "manual", inputID })
+
+    expect(yield* compaction.compact({ reason: "manual", context, inputID })).toEqual({ status: "completed" })
+    expect(requests).toHaveLength(1)
+    expect(requests[0]?.generation?.maxTokens).toBeLessThanOrEqual(32_000)
+  }),
+)
+
 it.effect("compaction hooks can supply the summary instead of the model", () =>
   Effect.gen(function* () {
     requests = []

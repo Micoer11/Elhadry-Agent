@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Message, ToolResultPart, Media } from "@elhadry/ai/effect"
-import { boundImages, unsupportedParts } from "@elhadry/core/session/model-request"
+import { boundImages, outputLimit, unsupportedParts } from "@elhadry/core/session/model-request"
 
 const capabilities = (input: string[]) => ({ tools: true, input, output: ["text"] })
 
@@ -174,6 +174,22 @@ describe("SessionModelRequest.unsupportedParts", () => {
         { type: "file", mime: "application/pdf" },
       ],
     })
+  })
+})
+
+describe("SessionModelRequest.outputLimit", () => {
+  test("leaves room when the output limit fills the context window", () => {
+    // Nous Portal advertises Step 3.7 Flash with a 262,144 token window and a 256,000 token output limit, but its
+    // endpoint enforces 256,000 and counts 11,795 input tokens for this request, template and tools included.
+    const limit = { context: 262_144, output: 256_000 }
+    const maxTokens = outputLimit(limit, { measured: 9_569, estimated: 0 }, 0.01)
+
+    expect(maxTokens + 11_795).toBeLessThanOrEqual(256_000)
+    expect(maxTokens).toBeGreaterThan(100_000)
+  })
+
+  test("keeps an ordinary output limit when the window is much larger", () => {
+    expect(outputLimit({ context: 200_000, output: 32_000 }, { measured: 160_000, estimated: 0 })).toBe(32_000)
   })
 })
 
