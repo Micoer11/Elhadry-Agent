@@ -128,6 +128,10 @@ jobs:
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_CLI_DIST: ${{ github.workspace }}/packages/cli/dist
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # GitHub's release-asset host intermittently returns 504 for the winCodeSign
+          # toolset. The mirror serves the same archives, and electron-builder still
+          # verifies each download against its pinned SHA-256 checksum.
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
         run: bun run package:win
       - name: List packages
         working-directory: packages/desktop
