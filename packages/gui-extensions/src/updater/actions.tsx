@@ -8,7 +8,7 @@ type Client = IpcClient<typeof Updater.spec>
 
 type Context = SetupContext<typeof definition>
 
-/** Downloads the offered release, then installs it as soon as staging finishes. */
+/** Downloads the offered release; installing waits for the install action. */
 export function download(ctx: Context, client: Client) {
   if (client.state()?.status !== "available") return
 
@@ -24,23 +24,11 @@ export function install(ctx: Context, client: Client) {
   void client.install({ signal: ctx.signal }).catch((cause: unknown) => requestFailed(ctx, cause))
 }
 
-/** Checks live, then downloads and installs whatever the check finds without another confirmation. */
+/** Checks live and reports the result; downloading and installing wait for their own buttons. */
 export async function check(ctx: Context, client: Client) {
   const state = await client.check({ signal: ctx.signal }).catch((cause: unknown) => requestFailed(ctx, cause))
 
   if (!state || ctx.signal.aborted) return
-
-  if (state.status === "available") {
-    await stage(ctx, client)
-
-    return
-  }
-
-  if (state.status === "ready" || state.status === "download-required") {
-    install(ctx, client)
-
-    return
-  }
 
   if (state.status === "up-to-date") {
     showToast({
@@ -56,6 +44,7 @@ export async function check(ctx: Context, client: Client) {
   }
 }
 
+/** Downloads the offered release and leaves it staged for the install action. */
 async function stage(ctx: Context, client: Client) {
   const state = await client
     .download({ signal: ctx.signal })
@@ -63,15 +52,7 @@ async function stage(ctx: Context, client: Client) {
 
   if (!state || ctx.signal.aborted) return
 
-  if (state.status === "error") {
-    showToast({ title: ctx.t("common.requestFailed"), description: state.message })
-
-    return
-  }
-
-  if (state.status !== "ready") return
-
-  await client.install({ signal: ctx.signal }).catch((cause: unknown) => requestFailed(ctx, cause))
+  if (state.status === "error") showToast({ title: ctx.t("common.requestFailed"), description: state.message })
 }
 
 function requestFailed(ctx: Context, cause: unknown) {

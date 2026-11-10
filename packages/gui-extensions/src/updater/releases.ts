@@ -84,3 +84,28 @@ export function toReleases(json: typeof Schema.Json.Type): ReadonlyArray<UpdateR
     ]
   })
 }
+
+/**
+ * Whether `candidate` names a later release than `current`, comparing the dotted numeric parts so `0.2.10` is newer
+ * than `0.2.9`. A missing part counts as zero.
+ */
+export function isNewerVersion(candidate: string, current: string) {
+  const next = versionParts(candidate)
+  const from = versionParts(current)
+
+  for (let index = 0; index < Math.max(next.length, from.length); index++) {
+    const difference = (next[index] ?? 0) - (from[index] ?? 0)
+
+    if (difference !== 0) return difference > 0
+  }
+
+  return false
+}
+
+function versionParts(version: string) {
+  return version
+    .trim()
+    .replace(/^v/i, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0)
+}

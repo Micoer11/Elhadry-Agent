@@ -69,6 +69,23 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
 
   publish.changed = () => provider.changed()
 
+  // A menu check reports what it found; the download and the restart each wait for a confirmation here.
+  const confirmInstall = (version: string) =>
+    Effect.gen(function* () {
+      const answer = yield* promise(() =>
+        dialog.showMessageBox({
+          type: "info",
+          message: ctx.t("dialog.ready.message", { version }),
+          title: ctx.t("dialog.ready.title"),
+          buttons: [ctx.t("dialog.restart"), ctx.t("dialog.later")],
+          defaultId: 0,
+          cancelId: 1,
+        }),
+      )
+
+      if (answer.response === 0) yield* updater.install
+    })
+
   const show = Effect.gen(function* () {
     const state = yield* updater.check
 
@@ -97,15 +114,28 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
     }
 
     if (state.status === "available") {
+      const answer = yield* promise(() =>
+        dialog.showMessageBox({
+          type: "info",
+          message: ctx.t("dialog.available.message", { version: state.version }),
+          title: ctx.t("dialog.available.title"),
+          buttons: [ctx.t("dialog.download"), ctx.t("dialog.later")],
+          defaultId: 0,
+          cancelId: 1,
+        }),
+      )
+
+      if (answer.response !== 0) return
+
       const staged = yield* updater.download
 
-      if (staged.status === "ready") yield* updater.install
+      if (staged.status === "ready") yield* confirmInstall(staged.version)
 
       return
     }
 
     if (state.status === "ready" || state.status === "download-required") {
-      yield* updater.install
+      yield* confirmInstall(state.version)
     }
   })
 

@@ -6,7 +6,7 @@ import { createLatest, useExtension, type IpcClient, type Live } from "../sdk"
 import { updaterAction } from "./action"
 import { AutoInstall, type UpdaterState } from "./contract"
 import type definition from "./index"
-import { fetchReleases } from "./releases"
+import { fetchReleases, isNewerVersion } from "./releases"
 
 type AutoClient = IpcClient<typeof AutoInstall.spec>
 
@@ -15,7 +15,7 @@ export default function UpdatesSection(props: {
   autoInstall: Accessor<Live<AutoClient>>
   /** Runs the action the latest-release card offers, such as download or install. */
   run: () => void
-  /** Always checks for updates, then downloads and installs whatever the check finds. */
+  /** Checks for updates and reports the result; downloading and installing wait for their own buttons. */
   check: () => void
 }) {
   const ctx = useExtension<typeof definition>()
@@ -54,17 +54,50 @@ export default function UpdatesSection(props: {
   const previous = () => allPrevious().slice(0, visiblePrevious())
   const hasMore = () => allPrevious().length > visiblePrevious()
 
-  const latestTitle = () => {
+  const installedVersion = () => ctx.build.version
+
+  // The version the card speaks about: the release the updater offers, else the installed build when the page has no
+  // offer yet, else the newest published release only when it is newer. A published release never reads as installed.
+  const offeredVersion = () => {
     const current = props.state()
-    const version = current && "version" in current ? current.version : latest()?.version
+
+    if (current && "version" in current) return current.version
+
+    if (current?.status === "up-to-date") return installedVersion()
+
+    const newest = latest()?.version
+
+    return newest && isNewerVersion(newest, installedVersion()) ? newest : installedVersion()
+  }
+
+  const latestTitle = () => {
+    const version = offeredVersion()
 
     return version ? ctx.t("latest.version", { version }) : ctx.t("latest.none")
+  }
+
+  // Without an updater offer, the published list says whether a download exists and never stands in for the install.
+  const publishedSummary = () => {
+    const newest = latest()
+
+    if (!newest) {
+      if (history.loading) return ctx.t("latest.loading")
+
+      if (history.error) return ctx.t("latest.failed")
+
+      return ctx.t("latest.none")
+    }
+
+    if (isNewerVersion(newest.version, installedVersion()))
+      return ctx.t("latest.publishedNewer", { version: newest.version })
+
+    return ctx.t("latest.current")
   }
 
   const summary = () => {
     const current = props.state()
 
-    if (!current) return ctx.t("latest.none")
+    if (!current) return publishedSummary()
 
     switch (current.status) {
       case "checking":
@@ -86,13 +119,7 @@ export default function UpdatesSection(props: {
       case "error":
         return current.message
       default:
-        if (latest()) return ctx.t("latest.published")
-
-        if (history.loading) return ctx.t("latest.loading")
-
-        if (history.error) return ctx.t("latest.failed")
-
-        return ctx.t("latest.none")
+        return publishedSummary()
     }
   }
 
@@ -119,6 +146,15 @@ export default function UpdatesSection(props: {
         <section class="settings-section" aria-label={ctx.t("latest.title")}>
           <h3 class="settings-section-title">{ctx.t("latest.title")}</h3>
           <div data-component="settings-list">
+            <div data-action="settings-current-version">
+              <Row
+                title={ctx.t("current.title")}
+                description={ctx.t("current.description", { version: installedVersion() })}
+              >
+                <span />
+              </Row>
+            </div>
+
             <div data-action="settings-latest-release">
               <Row title={latestTitle()} description={summary()}>
                 <Show when={action().visible}>

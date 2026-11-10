@@ -84,6 +84,11 @@ const setup: Setup<typeof definition> = (ctx) => {
     },
     get entries() {
       return [
+        {
+          id: "settings-current-version",
+          title: ctx.t("current.title"),
+          description: ctx.t("current.description", { version: ctx.build.version }),
+        },
         { id: "settings-latest-release", title: ctx.t("latest.title"), description: ctx.t("latest.published") },
         { id: "settings-auto-install", title: ctx.t("auto.title"), description: ctx.t("auto.description") },
         { id: "settings-release-notes", title: ctx.t("releaseNotes.title") },

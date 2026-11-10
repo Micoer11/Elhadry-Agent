@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { toReleases, type GithubRelease } from "./releases"
+import { isNewerVersion, toReleases, type GithubRelease } from "./releases"
 
 describe("toReleases", () => {
   test("maps published releases in order, stripping the tag prefix", () => {
@@ -55,6 +55,16 @@ describe("toReleases", () => {
   test("reads anything that is not a list as no releases", () => {
     expect(toReleases({ message: "Not Found" })).toEqual([])
     expect(toReleases(null)).toEqual([])
+  })
+})
+
+describe("isNewerVersion", () => {
+  test("compares dotted numeric parts instead of the whole string", () => {
+    expect(isNewerVersion("0.2.10", "0.2.9")).toBe(true)
+    expect(isNewerVersion("0.2.9", "0.2.10")).toBe(false)
+    expect(isNewerVersion("v0.3.0", "0.2.9")).toBe(true)
+    expect(isNewerVersion("1.0", "0.9.9")).toBe(true)
+    expect(isNewerVersion("0.2.4", "0.2.4")).toBe(false)
   })
 })
 
